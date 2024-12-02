@@ -61,7 +61,10 @@ const PhysicsCanvas: React.FC = () => {
     }
 
     // 새로운 러너 생성 및 실행
-    const runner = Matter.Runner.create();
+    const runner = Matter.Runner.create({
+      delta: 25,
+      isFixed: true, // 고정된 시간 간격 유지
+    });
     Matter.Runner.run(runner, engineRef.current);
     runnerRef.current = runner;
 
@@ -104,7 +107,7 @@ const PhysicsCanvas: React.FC = () => {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3, // 반발 계수: 공이 튀어오르는 정도
-        friction: 0.05, // 마찰력
+        friction: 0.01, // 마찰력
         frictionAir: 0.01 // 공중에서의 저항
       });
       ballRef.current = ball;  // ballRef에 공을 할당하여 참조하도록 합니다
@@ -140,7 +143,7 @@ const PhysicsCanvas: React.FC = () => {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
-        friction: 0.05,
+        friction: 0.01,
         frictionAir: 0.01,
       });
       initialBallPositionRef.current = { x: 200, y: 100 };
