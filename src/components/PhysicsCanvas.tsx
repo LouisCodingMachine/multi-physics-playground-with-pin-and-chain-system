@@ -21,7 +21,7 @@ const PhysicsCanvas: React.FC = () => {
   const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
-  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5'];
+  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
 
@@ -212,13 +212,13 @@ const PhysicsCanvas: React.FC = () => {
     
       const rightUpGreenPlatform = Matter.Bodies.rectangle(550, 300, 60, 10, {
         isStatic: true,
-        label: 'right_green_platform',
+        label: 'right_up_green_platform',
         render: { fillStyle: '#10b981' },
       });
 
       const rightDownGreenPlatform = Matter.Bodies.rectangle(500, 500, 60, 10, {
         isStatic: true,
-        label: 'right_green_platform',
+        label: 'right_down_green_platform',
         render: { fillStyle: '#10b981' },
       });
     
@@ -845,14 +845,14 @@ const PhysicsCanvas: React.FC = () => {
         >
           <Eraser size={24} />
         </button>
-        <button
+        {/* <button
           onClick={() => handleToolChange('pin')}
           className={`p-2 rounded ${
             tool === 'pin' ? 'bg-blue-500 text-white' : 'bg-gray-200'
           }`}
         >
           <Pin size={24} />
-        </button>
+        </button> */}
         {/* 밀기 도구 버튼 */}
         <button
           onClick={() => handleToolChange('push')}
