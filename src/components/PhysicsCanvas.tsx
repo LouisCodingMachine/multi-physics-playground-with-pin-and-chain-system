@@ -18,6 +18,8 @@ const PhysicsCanvas: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [resetTrigger, setResetTrigger] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
+  const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
+  
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
@@ -646,6 +648,8 @@ const PhysicsCanvas: React.FC = () => {
         if (Matter.Bounds.contains(body.bounds, mousePosition) &&
             !staticObjects.includes(body.label)) {
           Matter.World.remove(engineRef.current.world, body);
+          // 턴 전환 로직
+          setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
           break;
         }
       }
@@ -653,6 +657,9 @@ const PhysicsCanvas: React.FC = () => {
     }
 
     if (tool === 'push' && ballRef.current) { 
+      // 턴 전환 로직
+      setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
+
       const ball = ballRef.current;
       const ballX = ball.position.x;
 
@@ -739,16 +746,19 @@ const PhysicsCanvas: React.FC = () => {
   };
   
   const handleMouseUp = () => {
-    if (tool === 'eraser' || drawPoints.length < 2) {
-      setIsDrawing(false);
-      setDrawPoints([]);
-      return;
-    }
+    // if (tool === 'eraser' || drawPoints.length < 2) {
+    //   setIsDrawing(false);
+    //   setDrawPoints([]);
+
+    //   return;
+    // }
   
     if (tool === 'pen') {
       const body = createPhysicsBody(drawPoints);
       if (body) {
         Matter.World.add(engineRef.current.world, body);
+        // 턴 전환 로직
+        setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
       }
     }
   
@@ -862,6 +872,16 @@ const PhysicsCanvas: React.FC = () => {
         </button>
       </div>
 
+      <div className="flex items-center justify-between gap-4">
+        <h2
+          className={`text-lg font-bold ${
+            currentTurn === 'player1' ? 'text-blue-500' : 'text-red-500'
+          }`}
+        >
+          {currentTurn === 'player1' ? "Player1 Turn" : "Player2 Turn"}
+        </h2>
+      </div>
+      
       <div className="relative">
         <canvas
           ref={canvasRef}
