@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle } from 'lucide-react';
-import axios from 'axios';
+// import axios from 'axios';
 
 interface LogInfo {
   player_number: number,
@@ -786,7 +786,7 @@ const PhysicsCanvas: React.FC = () => {
       type: 'draw',
       timestamp: new Date(),
     };
-    saveLog(logInfo);
+    // saveLog(logInfo);
   
     // Simplify the path to reduce physics complexity
     const simplified = points.filter((point, index) => {
@@ -886,7 +886,7 @@ const PhysicsCanvas: React.FC = () => {
             type: 'erase',
             timestamp: new Date(),
           };
-          saveLog(logInfo);
+          // saveLog(logInfo);
 
           break;
         }
@@ -904,7 +904,7 @@ const PhysicsCanvas: React.FC = () => {
         type: 'push',
         timestamp: new Date(),
       };
-      saveLog(logInfo);
+      // saveLog(logInfo);
 
       // 턴 전환 로직
       setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
@@ -1073,27 +1073,27 @@ const PhysicsCanvas: React.FC = () => {
       type: 'refresh',
       timestamp: new Date(),
     };
-    saveLog(logInfo);
+    // saveLog(logInfo);
   };
 
   // 누적해서 csv 파일 업데이트
-  const saveLog = async (logInfo: LogInfo) => {
-    try {
-      console.log("ddd: ", {
-        player_number: logInfo.player_number,
-        type: logInfo.type,
-        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
-      })
-      await axios.post('http://localhost:3000/logger/log', {
-        player_number: logInfo.player_number,
-        type: logInfo.type,
-        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
-      });
-      console.log('Log saved successfully');
-    } catch (error) {
-      console.error('Failed to save log:', error);
-    }
-  }
+  // const saveLog = async (logInfo: LogInfo) => {
+  //   try {
+  //     console.log("ddd: ", {
+  //       player_number: logInfo.player_number,
+  //       type: logInfo.type,
+  //       timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+  //     })
+  //     await axios.post('http://localhost:3000/logger/log', {
+  //       player_number: logInfo.player_number,
+  //       type: logInfo.type,
+  //       timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+  //     });
+  //     console.log('Log saved successfully');
+  //   } catch (error) {
+  //     console.error('Failed to save log:', error);
+  //   }
+  // }
 
   return (
     <div className="flex flex-col items-center gap-4">
