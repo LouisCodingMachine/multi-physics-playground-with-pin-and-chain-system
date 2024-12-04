@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle } from 'lucide-react';
+import axios from 'axios';
+
+interface LogInfo {
+  player_number: number,
+  type: 'draw' | 'erase' | 'push' | 'refresh' | 'move_prev_level' | 'move_next_level',
+  timestamp: Date,
+}
 
 const TOTAL_LEVELS = 9; // 총 스테이지 수를 정의합니다.
 
@@ -19,11 +26,16 @@ const PhysicsCanvas: React.FC = () => {
   const [resetTrigger, setResetTrigger] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
+  const [pushLock, setPushLock] = useState(false);
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
+
+  useEffect(() => {
+    setTimeout(() => setPushLock(false), 3000);
+  }, [pushLock]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -139,14 +151,14 @@ const PhysicsCanvas: React.FC = () => {
         Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall' }),
       ];
 
-      const ball = Matter.Bodies.circle(200, 100, 15, {
+      const ball = Matter.Bodies.circle(200, 500, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
         friction: 0.01,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 200, y: 100 };
+      initialBallPositionRef.current = { x: 200, y: 500 };
 
       const horizontalPlatform = Matter.Bodies.rectangle(400, 550, 700, 200, {
         isStatic: true,
@@ -208,14 +220,14 @@ const PhysicsCanvas: React.FC = () => {
         Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall' }),
       ];
     
-      const ball = Matter.Bodies.circle(400, 100, 15, {
+      const ball = Matter.Bodies.circle(400, 180, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
         friction: 0.05,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 400, y: 100 };
+      initialBallPositionRef.current = { x: 400, y: 180 };
     
       const star = Matter.Bodies.trapezoid(400, 350, 20, 20, 1, {
         render: { fillStyle: '#fbbf24' },
@@ -288,14 +300,14 @@ const PhysicsCanvas: React.FC = () => {
         Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall' }),
       ];
 
-      const ball = Matter.Bodies.circle(150, 100, 15, {
+      const ball = Matter.Bodies.circle(150, 400, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
         friction: 0.05,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 150, y: 100 };
+      initialBallPositionRef.current = { x: 150, y: 400 };
 
       const horizontalPlatform = Matter.Bodies.rectangle(150, 450, 200, 150, {
         isStatic: true,
@@ -488,14 +500,14 @@ const PhysicsCanvas: React.FC = () => {
         Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall' }),
       ];
 
-      const ball = Matter.Bodies.circle(150, 100, 15, {
+      const ball = Matter.Bodies.circle(150, 400, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
         friction: 0.05,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 150, y: 100 };
+      initialBallPositionRef.current = { x: 150, y: 400 };
 
       const horizontalDownPlatform = Matter.Bodies.rectangle(300, 450, 450, 150, {
         isStatic: true,
@@ -534,14 +546,14 @@ const PhysicsCanvas: React.FC = () => {
         Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall' }),
       ];
 
-      const ball = Matter.Bodies.circle(200, 100, 15, {
+      const ball = Matter.Bodies.circle(80, 200, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
-        friction: 0.05,
+        friction: 0.01,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 200, y: 100 };
+      initialBallPositionRef.current = { x: 80, y: 200 };
 
       const pillar1 = Matter.Bodies.rectangle(750, 500, 80, 200, {
         isStatic: true,
@@ -616,14 +628,14 @@ const PhysicsCanvas: React.FC = () => {
       ];
     
       // Ball setup
-      const ball = Matter.Bodies.circle(150, 400, 15, {
+      const ball = Matter.Bodies.circle(150, 500, 15, {
         render: { fillStyle: '#ef4444' },
         label: 'ball',
         restitution: 0.3,
         friction: 0.05,
         frictionAir: 0.01,
       });
-      initialBallPositionRef.current = { x: 150, y: 400 };
+      initialBallPositionRef.current = { x: 150, y: 500 };
 
       const horizontalPlatform = Matter.Bodies.rectangle(150, 550, 150, 100, {
         isStatic: true,
@@ -768,6 +780,13 @@ const PhysicsCanvas: React.FC = () => {
   const createPhysicsBody = (points: Matter.Vector[]) => {
     if (points.length < 2) return null;
     console.log("object generated");
+
+    const logInfo: LogInfo = {
+      player_number: currentTurn === "player1" ? 1 : 2,
+      type: 'draw',
+      timestamp: new Date(),
+    };
+    saveLog(logInfo);
   
     // Simplify the path to reduce physics complexity
     const simplified = points.filter((point, index) => {
@@ -861,13 +880,32 @@ const PhysicsCanvas: React.FC = () => {
           Matter.World.remove(engineRef.current.world, body);
           // 턴 전환 로직
           setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
+          
+          const logInfo: LogInfo = {
+            player_number: currentTurn === "player1" ? 1 : 2,
+            type: 'erase',
+            timestamp: new Date(),
+          };
+          saveLog(logInfo);
+
           break;
         }
       }
       return;
     }
+    console.log("pushLock: ", pushLock);
 
-    if (tool === 'push' && ballRef.current) { 
+    if (tool === 'push' && ballRef.current && !pushLock) {
+      // push 남용 방지
+      setPushLock(true);
+      
+      const logInfo: LogInfo = {
+        player_number: currentTurn === "player1" ? 1 : 2,
+        type: 'push',
+        timestamp: new Date(),
+      };
+      saveLog(logInfo);
+
       // 턴 전환 로직
       setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
 
@@ -1029,7 +1067,33 @@ const PhysicsCanvas: React.FC = () => {
     
     // 현재 레벨에 대한 설정을 다시 불러옴
     setCurrentLevel(currentLevel); // 이로 인해 useEffect가 실행됨
+
+    const logInfo: LogInfo = {
+      player_number: currentTurn === "player1" ? 1 : 2,
+      type: 'refresh',
+      timestamp: new Date(),
+    };
+    saveLog(logInfo);
   };
+
+  // 누적해서 csv 파일 업데이트
+  const saveLog = async (logInfo: LogInfo) => {
+    try {
+      console.log("ddd: ", {
+        player_number: logInfo.player_number,
+        type: logInfo.type,
+        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+      })
+      await axios.post('http://localhost:3000/logger/log', {
+        player_number: logInfo.player_number,
+        type: logInfo.type,
+        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+      });
+      console.log('Log saved successfully');
+    } catch (error) {
+      console.error('Failed to save log:', error);
+    }
+  }
 
   return (
     <div className="flex flex-col items-center gap-4">
