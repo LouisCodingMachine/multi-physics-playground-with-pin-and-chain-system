@@ -1097,7 +1097,7 @@ const PhysicsCanvas: React.FC = () => {
         type: logInfo.type,
         timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
       })
-      await axios.post('https://13.239.234.81/logger/log', {
+      await axios.post('https://13.239.234.81.nip.io/logger/log', {
         player_number: logInfo.player_number,
         type: logInfo.type,
         timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
