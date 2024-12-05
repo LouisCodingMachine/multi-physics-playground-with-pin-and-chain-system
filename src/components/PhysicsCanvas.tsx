@@ -1028,12 +1028,26 @@ const PhysicsCanvas: React.FC = () => {
       if (currentLevel < TOTAL_LEVELS) {
         setCurrentLevel(prev => prev + 1);
         setGameEnded(false); // 게임 종료 상태 초기화
+
+        const logInfo: LogInfo = {
+          player_number: currentTurn === "player1" ? 1 : 2,
+          type: 'move_next_level',
+          timestamp: new Date(),
+        };
+        saveLog(logInfo)
       } else {
         // showTemporaryMessage("실험이 마지막 스테이지입니다");
       }
     } else {
       if (currentLevel > 1) {
         setCurrentLevel(prev => prev - 1);
+        
+        const logInfo: LogInfo = {
+          player_number: currentTurn === "player1" ? 1 : 2,
+          type: 'move_prev_level',
+          timestamp: new Date(),
+        };
+        saveLog(logInfo)
       } else {
         // showTemporaryMessage("첫 스테이지입니다");
       }
