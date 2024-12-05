@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle } from 'lucide-react';
-// import axios from 'axios';
+import axios from 'axios';
 
 interface LogInfo {
   player_number: number,
@@ -27,6 +27,7 @@ const PhysicsCanvas: React.FC = () => {
   const [gameEnded, setGameEnded] = useState(false);
   const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
   const [pushLock, setPushLock] = useState(false);
+  const [drawLock, setDrawLock] = useState(false);
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform'];
@@ -34,7 +35,7 @@ const PhysicsCanvas: React.FC = () => {
   const ballRef = useRef<Matter.Body | null>(null);
 
   useEffect(() => {
-    setTimeout(() => setPushLock(false), 3000);
+    setTimeout(() => setPushLock(false), 5000);
   }, [pushLock]);
 
   useEffect(() => {
@@ -773,9 +774,7 @@ const PhysicsCanvas: React.FC = () => {
     //   Matter.World.clear(world, false);
     //   Matter.Engine.clear(engineRef.current);
     // };
-  }, [currentLevel, resetTrigger]);
-
-  
+  }, [currentLevel, resetTrigger]);  
 
   const createPhysicsBody = (points: Matter.Vector[]) => {
     if (points.length < 2) return null;
@@ -786,7 +785,7 @@ const PhysicsCanvas: React.FC = () => {
       type: 'draw',
       timestamp: new Date(),
     };
-    // saveLog(logInfo);
+    saveLog(logInfo);
   
     // Simplify the path to reduce physics complexity
     const simplified = points.filter((point, index) => {
@@ -886,7 +885,7 @@ const PhysicsCanvas: React.FC = () => {
             type: 'erase',
             timestamp: new Date(),
           };
-          // saveLog(logInfo);
+          saveLog(logInfo);
 
           break;
         }
@@ -904,7 +903,7 @@ const PhysicsCanvas: React.FC = () => {
         type: 'push',
         timestamp: new Date(),
       };
-      // saveLog(logInfo);
+      saveLog(logInfo);
 
       // 턴 전환 로직
       setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
@@ -1073,27 +1072,27 @@ const PhysicsCanvas: React.FC = () => {
       type: 'refresh',
       timestamp: new Date(),
     };
-    // saveLog(logInfo);
+    saveLog(logInfo);
   };
 
   // 누적해서 csv 파일 업데이트
-  // const saveLog = async (logInfo: LogInfo) => {
-  //   try {
-  //     console.log("ddd: ", {
-  //       player_number: logInfo.player_number,
-  //       type: logInfo.type,
-  //       timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
-  //     })
-  //     await axios.post('http://localhost:3000/logger/log', {
-  //       player_number: logInfo.player_number,
-  //       type: logInfo.type,
-  //       timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
-  //     });
-  //     console.log('Log saved successfully');
-  //   } catch (error) {
-  //     console.error('Failed to save log:', error);
-  //   }
-  // }
+  const saveLog = async (logInfo: LogInfo) => {
+    try {
+      console.log("ddd: ", {
+        player_number: logInfo.player_number,
+        type: logInfo.type,
+        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+      })
+      await axios.post('http://ec2-13-239-234-81.ap-southeast-2.compute.amazonaws.com:3000/logger/log', {
+        player_number: logInfo.player_number,
+        type: logInfo.type,
+        timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+      });
+      console.log('Log saved successfully');
+    } catch (error) {
+      console.error('Failed to save log:', error);
+    }
+  }
 
   return (
     <div className="flex flex-col items-center gap-4">
