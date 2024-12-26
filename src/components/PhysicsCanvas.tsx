@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle } from 'lucide-react';
 import axios from 'axios';
+import { useSocket } from '../context/SocketContext';
 
 interface LogInfo {
   player_number: number,
@@ -13,6 +14,7 @@ const TOTAL_LEVELS = 9; // 총 스테이지 수를 정의합니다.
 
 // 맵이 변할 때 마다 실행됨.
 const PhysicsCanvas: React.FC = () => {
+  const socket = useSocket();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef(Matter.Engine.create({
     gravity: { x: 0, y: 1, scale: 0.001 },
@@ -28,11 +30,168 @@ const PhysicsCanvas: React.FC = () => {
   const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
   const [pushLock, setPushLock] = useState(false);
   const [drawLock, setDrawLock] = useState(false);
+  const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
+  const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // useEffect(() => {
+  //   // 서버에서 mouseMove 이벤트 수신
+  //   socket.on('mouseMove', (data: any) => {
+  //     const { x, y, playerId } = data;
+  //     drawOtherPlayerCursor(x, y, playerId); // 다른 플레이어의 커서를 그립니다.
+  //   });
+
+  //   return () => {
+  //     socket.off('mouseMove');
+  //   };
+  // }, [socket]);
+
+  // Socket 이벤트 처리
+  useEffect(() => {
+    socket.on('mouseMove', (data: { x: number; y: number; playerId: string }) => {
+      if(data.playerId !== 'player1') return;
+      console.log("data: ", data);
+      setCursors((prevCursors) => {
+        // playerId에 따라 기존 데이터를 업데이트
+        const updatedCursors = prevCursors.filter((cursor) => cursor.playerId !== data.playerId);
+        return [...updatedCursors, data];
+      });
+    });
+
+    return () => {
+      socket.off('mouseMove');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string }) => {
+      // console.log("playerId: ", data.playerId);
+      console.log("playerId: ", data.customId);
+      if(data.playerId !== 'player1') return;
+
+      // 도형을 생성하며 customId를 설정
+      const body = createPhysicsBody(data.points, false, data.customId);
+  
+      if (body) {
+        // Matter.js 월드에 도형 추가
+        Matter.World.add(engineRef.current.world, body);
+      }
+    });
+  
+    return () => {
+      socket.off('drawShape');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('resetLevel', (data: { level: number }) => {
+      console.log(`Resetting level to: ${data.level}`);
+      
+      // 월드와 렌더를 정지하고 지운 후, 다시 설정
+      const world = engineRef.current.world;
+      Matter.World.clear(world, false);
+      Matter.Engine.clear(engineRef.current);
+  
+      if (renderRef.current) {
+        Matter.Render.stop(renderRef.current);
+        Matter.Render.run(renderRef.current);
+      }
+  
+      // 수신한 레벨로 초기화
+      setCurrentLevel(data.level);
+      setResetTrigger((prev) => !prev);
+    });
+  
+    return () => {
+      socket.off('resetLevel');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('erase', (data: { customId: string; playerId: string }) => {
+      const body = Matter.Composite.allBodies(engineRef.current.world).find(
+        (b) => b.label === data.customId
+      );
+      if (body) {
+        Matter.World.remove(engineRef.current.world, body);
+      }
+    });
+  
+    return () => {
+      socket.off('erase');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('push', (data: { force: { x: number; y: number }; playerId: string }) => {
+      if (ballRef.current) {
+        const ball = ballRef.current;
+        Matter.Body.applyForce(ball, ball.position, data.force);
+      }
+    });
+  
+    return () => {
+      socket.off('push');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('changeTool', (data: { tool: 'pen' | 'eraser' | 'pin' | 'push'; playerId: string }) => {
+      console.log(`Tool changed to: ${data.tool} by player: ${data.playerId}`);
+      setTool(data.tool);
+    });
+  
+    return () => {
+      socket.off('changeTool');
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on('changeLevel', (data: { level: number; direction: string; playerId: string }) => {
+      console.log(`Level changed to: ${data.level} by player: ${data.playerId}`);
+      setCurrentLevel(data.level); // 레벨 업데이트
+      setGameEnded(false); // 게임 종료 상태 초기화
+    });
+  
+    return () => {
+      socket.off('changeLevel');
+    };
+  }, []);
+
+  // 상대방 커서 움직임을 캔버스에 그리기
+  useEffect(() => {
+    const canvas = cursorCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      // 캔버스를 초기화
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      console.log("draw");
+      // 모든 커서를 다시 그림
+      cursors.forEach(({ x, y, playerId }) => {
+        console.log("cursors[0].playerId: ", cursors[0].playerId);
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
+        ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어별 색상
+        ctx.fill();
+      });
+
+      requestAnimationFrame(draw); // 애니메이션 프레임 요청
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(draw);
+    };
+  }, [cursors]); // cursors가 변경될 때마다 다시 그림
 
   useEffect(() => {
     setTimeout(() => setPushLock(false), 5000);
@@ -776,7 +935,8 @@ const PhysicsCanvas: React.FC = () => {
     // };
   }, [currentLevel, resetTrigger]);  
 
-  const createPhysicsBody = (points: Matter.Vector[]) => {
+  const createPhysicsBody = (points: Matter.Vector[], myGenerated?: boolean, customId?: string) => {
+    console.log("customId: ", customId);
     if (points.length < 2) return null;
     console.log("object generated");
 
@@ -819,6 +979,7 @@ const PhysicsCanvas: React.FC = () => {
           frictionStatic: 1,
           restitution: 0.2,
           density: 0.01,
+          label: customId || `custom_${Date.now()}`, // Assign customId
         }
       );
     }
@@ -838,6 +999,7 @@ const PhysicsCanvas: React.FC = () => {
         restitution: 0.2,
         density: 0.005, // 밀도를 낮추어 떨어지는 속도를 줄임
         frictionAir: 0.02, // 공중 저항을 높임
+        label: customId || `custom_${Date.now()}`, // Assign customId
       };
   
       // Use the center of mass as the initial position
@@ -850,6 +1012,13 @@ const PhysicsCanvas: React.FC = () => {
       }));
   
       const body = Matter.Bodies.fromVertices(centroidX, centroidY, [translatedVertices], bodyOptions);
+
+      if (body && myGenerated) {
+        // 도형 데이터를 서버로 전송
+        const customId = body.label; // Use the label as the customId
+        socket.emit('drawShape', { points: simplified, playerId: 'player2', customId });
+      }
+
       return body;
     }
   
@@ -877,6 +1046,16 @@ const PhysicsCanvas: React.FC = () => {
         if (Matter.Bounds.contains(body.bounds, mousePosition) &&
             !staticObjects.includes(body.label)) {
           Matter.World.remove(engineRef.current.world, body);
+
+          const customId = body.label; // Use customId for deletion
+          // Matter.World.remove(engineRef.current.world, body);
+          
+          // 서버에 삭제 요청 전송
+          socket.emit('erase', {
+            customId,
+            playerId: 'player2',
+          });
+
           // 턴 전환 로직
           setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
           
@@ -915,13 +1094,23 @@ const PhysicsCanvas: React.FC = () => {
       const clickOffsetX = point.x - ballX;
 
       // 클릭한 위치가 공의 왼쪽인지 오른쪽인지 판단
-      if (clickOffsetX < 0) {
-        // 왼쪽을 클릭하면 오른쪽으로 힘을 가함
-        Matter.Body.applyForce(ball, ball.position, { x: 0.008, y: 0 });
-      } else {
-        // 오른쪽을 클릭하면 왼쪽으로 힘을 가함
-        Matter.Body.applyForce(ball, ball.position, { x: -0.008, y: 0 });
-      }
+      // if (clickOffsetX < 0) {
+      //   // 왼쪽을 클릭하면 오른쪽으로 힘을 가함
+      //   Matter.Body.applyForce(ball, ball.position, { x: 0.008, y: 0 });
+      // } else {
+      //   // 오른쪽을 클릭하면 왼쪽으로 힘을 가함
+      //   Matter.Body.applyForce(ball, ball.position, { x: -0.008, y: 0 });
+      // }
+      const force = clickOffsetX < 0 ? { x: 0.008, y: 0 } : { x: -0.008, y: 0 };
+
+      // 공에 힘을 가함
+      Matter.Body.applyForce(ball, ball.position, force);
+
+      // 서버에 힘 적용 요청 전송
+      socket.emit('push', {
+        force,
+        playerId: 'player2',
+      });
     }
 
     setIsDrawing(true);
@@ -929,13 +1118,19 @@ const PhysicsCanvas: React.FC = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current || tool === 'eraser') return;
+    if (!canvasRef.current) return;
   
     const rect = canvasRef.current.getBoundingClientRect();
     let point = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+
+    // 서버로 마우스 위치 전송
+    socket.emit('mouseMove', { x: point.x, y: point.y, playerId: 'player2' });
+
+    if(!isDrawing || tool === 'eraser') return;
+
     // console.log("point.y: ", point.y)
     // console.log("rect.left: ", rect.left)
     // console.log("rect.right: ", rect.right)
@@ -1002,7 +1197,7 @@ const PhysicsCanvas: React.FC = () => {
     // }
   
     if (tool === 'pen') {
-      const body = createPhysicsBody(drawPoints);
+      const body = createPhysicsBody(drawPoints, true);
       if (body) {
         Matter.World.add(engineRef.current.world, body);
         // 턴 전환 로직
@@ -1018,6 +1213,9 @@ const PhysicsCanvas: React.FC = () => {
     setTool(newTool);
     setIsDrawing(false);
     setDrawPoints([]);
+
+    // 서버로 tool 변경 전송
+    socket.emit('changeTool', { tool: newTool, playerId: 'player2' });
   };
 
   // const handleLevelChange = (direction: 'prev' | 'next') => {
@@ -1026,6 +1224,7 @@ const PhysicsCanvas: React.FC = () => {
   const handleLevelChange = (direction: 'prev' | 'next') => {
     if (direction === 'next') {
       if (currentLevel < TOTAL_LEVELS) {
+        const newLevel = currentLevel + 1;
         setCurrentLevel(prev => prev + 1);
         setGameEnded(false); // 게임 종료 상태 초기화
 
@@ -1035,11 +1234,15 @@ const PhysicsCanvas: React.FC = () => {
           timestamp: new Date(),
         };
         saveLog(logInfo)
+        
+        // 서버로 레벨 변경 전송
+        socket.emit('changeLevel', { level: newLevel, direction, playerId: 'player2' });
       } else {
         // showTemporaryMessage("실험이 마지막 스테이지입니다");
       }
     } else {
       if (currentLevel > 1) {
+        const newLevel = currentLevel - 1;
         setCurrentLevel(prev => prev - 1);
         
         const logInfo: LogInfo = {
@@ -1048,6 +1251,9 @@ const PhysicsCanvas: React.FC = () => {
           timestamp: new Date(),
         };
         saveLog(logInfo)
+        
+        // 서버로 레벨 변경 전송
+        socket.emit('changeLevel', { level: newLevel, direction, playerId: 'player2' });
       } else {
         // showTemporaryMessage("첫 스테이지입니다");
       }
@@ -1056,8 +1262,12 @@ const PhysicsCanvas: React.FC = () => {
 
   const handleNextLevel = () => {
     if (currentLevel < TOTAL_LEVELS) {
+      const newLevel = currentLevel + 1
       setCurrentLevel((prevLevel) => prevLevel + 1)
       setGameEnded(false); // 게임 종료 상태 초기화
+
+      // 서버로 레벨 변경 전송
+      socket.emit('changeLevel', { level: newLevel, playerId: 'player2' });
     } else {
       setCurrentLevel((prevLevel) => prevLevel)
       setGameEnded(false); // 게임 종료 상태 초기화
@@ -1087,6 +1297,9 @@ const PhysicsCanvas: React.FC = () => {
       timestamp: new Date(),
     };
     saveLog(logInfo);
+
+    // 서버로 초기화 이벤트 전송
+    socket.emit('resetLevel', { level: currentLevel });
   };
 
   // 누적해서 csv 파일 업데이트
@@ -1107,6 +1320,18 @@ const PhysicsCanvas: React.FC = () => {
       console.error('Failed to save log:', error);
     }
   }
+
+  const drawOtherPlayerCursor = (x: number, y: number, playerId: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
+    ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어에 따라 색상 다르게
+    ctx.fill();
+  };
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -1159,7 +1384,7 @@ const PhysicsCanvas: React.FC = () => {
           <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
         </button>
       </div>
-
+{/* 
       <div className="flex items-center justify-between gap-4">
         <h2
           className={`text-lg font-bold ${
@@ -1168,7 +1393,7 @@ const PhysicsCanvas: React.FC = () => {
         >
           {currentTurn === 'player1' ? "Player1 Turn" : "Player2 Turn"}
         </h2>
-      </div>
+      </div> */}
       
       <div className="relative">
         <canvas
@@ -1181,6 +1406,17 @@ const PhysicsCanvas: React.FC = () => {
           onMouseLeave={handleMouseUp}
           className="border border-gray-300 rounded-lg shadow-lg"
           style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
+        />
+        
+        {/* 커서를 표시하는 별도의 캔버스 */}
+        <canvas
+          ref={cursorCanvasRef}
+          width={800}
+          height={600}
+          className="absolute top-0 left-0 border border-transparent pointer-events-none"
+          style={{
+            zIndex: 10, // 게임 캔버스 위에 렌더링
+          }}
         />
         
         {isDrawing && tool === 'pen' && (
