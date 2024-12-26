@@ -27,7 +27,7 @@ const PhysicsCanvas: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [resetTrigger, setResetTrigger] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
-  const [currentTurn, setCurrentTurn] = useState<'player1' | 'player2'>('player1');
+  const [currentTurn, setCurrentTurn] = useState<string>('player1');
   const [pushLock, setPushLock] = useState(false);
   const [drawLock, setDrawLock] = useState(false);
   const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
@@ -49,6 +49,19 @@ const PhysicsCanvas: React.FC = () => {
   //     socket.off('mouseMove');
   //   };
   // }, [socket]);
+
+  useEffect(() => {
+    socket.emit('getTurn'); // 현재 턴 정보 요청
+  
+    socket.on('updateTurn', (data: { currentTurn: string }) => {
+      console.log('Current turn:', data.currentTurn);
+      setCurrentTurn(data.currentTurn); // 클라이언트 상태 업데이트
+    });
+  
+    return () => {
+      socket.off('updateTurn');
+    };
+  }, []);
 
   // Socket 이벤트 처리
   useEffect(() => {
@@ -1039,6 +1052,7 @@ const PhysicsCanvas: React.FC = () => {
     };
 
     if (tool === 'eraser') {
+      if(currentTurn === 'player1') return;
       const bodies = Matter.Composite.allBodies(engineRef.current.world);
       const mousePosition = { x: point.x, y: point.y };
       
@@ -1056,8 +1070,10 @@ const PhysicsCanvas: React.FC = () => {
             playerId: 'player2',
           });
 
+          socket.emit('changeTurn', { nextPlayerId: 'player1' });
+
           // 턴 전환 로직
-          setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
+          // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
           
           const logInfo: LogInfo = {
             player_number: currentTurn === "player1" ? 1 : 2,
@@ -1076,6 +1092,7 @@ const PhysicsCanvas: React.FC = () => {
     if (tool === 'push' && ballRef.current && !pushLock) {
       // push 남용 방지
       setPushLock(true);
+      if(currentTurn === 'player1') return;
       
       const logInfo: LogInfo = {
         player_number: currentTurn === "player1" ? 1 : 2,
@@ -1085,7 +1102,7 @@ const PhysicsCanvas: React.FC = () => {
       saveLog(logInfo);
 
       // 턴 전환 로직
-      setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
+      // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
 
       const ball = ballRef.current;
       const ballX = ball.position.x;
@@ -1111,6 +1128,8 @@ const PhysicsCanvas: React.FC = () => {
         force,
         playerId: 'player2',
       });
+
+      socket.emit('changeTurn', { nextPlayerId: 'player1' });
     }
 
     setIsDrawing(true);
@@ -1197,11 +1216,14 @@ const PhysicsCanvas: React.FC = () => {
     // }
   
     if (tool === 'pen') {
+      if(currentTurn === 'player1') return;
       const body = createPhysicsBody(drawPoints, true);
       if (body) {
         Matter.World.add(engineRef.current.world, body);
+        
+        socket.emit('changeTurn', { nextPlayerId: 'player1' });
         // 턴 전환 로직
-        setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
+        // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
       }
     }
   
@@ -1384,7 +1406,7 @@ const PhysicsCanvas: React.FC = () => {
           <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
         </button>
       </div>
-{/* 
+
       <div className="flex items-center justify-between gap-4">
         <h2
           className={`text-lg font-bold ${
@@ -1393,7 +1415,7 @@ const PhysicsCanvas: React.FC = () => {
         >
           {currentTurn === 'player1' ? "Player1 Turn" : "Player2 Turn"}
         </h2>
-      </div> */}
+      </div>
       
       <div className="relative">
         <canvas
