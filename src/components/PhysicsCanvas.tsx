@@ -3,6 +3,7 @@ import Matter from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle } from 'lucide-react';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
+// import Timer from './Timer';
 
 interface LogInfo {
   player_number: number,
@@ -30,13 +31,35 @@ const PhysicsCanvas: React.FC = () => {
   const [currentTurn, setCurrentTurn] = useState<string>('player1');
   const [pushLock, setPushLock] = useState(false);
   const [drawLock, setDrawLock] = useState(false);
-  const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
+  // const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
+  // const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
+  const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number; timestamp: number }[]>([]);
+  const CURSOR_LIFETIME = 2000; // 2초
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  // const [startTimer, setStartTimer] = useState<boolean>(false);
+  // const [isFinished, setIsFinished] = useState<boolean>(false);
+
+  // // 타이머 시작 이벤트 처리
+  // useEffect(() => {
+  //   socket.on('startTimer', () => {
+  //     console.log('Timer started by server');
+  //     setStartTimer(true);
+  //   });
+
+  //   return () => {
+  //     socket.off('startTimer');
+  //   };
+  // }, []);
+
+  // const handleTimerFinish = () => {
+  //   console.log('Timer finished');
+  //   setIsFinished(true); // 타이머 종료 상태 업데이트
+  // };
 
   // useEffect(() => {
   //   // 서버에서 mouseMove 이벤트 수신
@@ -66,12 +89,19 @@ const PhysicsCanvas: React.FC = () => {
   // Socket 이벤트 처리
   useEffect(() => {
     socket.on('mouseMove', (data: { x: number; y: number; playerId: string }) => {
-      if(data.playerId !== 'player1') return;
-      console.log("data: ", data);
+      if(data.playerId !== 'player2') return;
+      const timestamp = Date.now();
+      // console.log("data: ", data);
       setCursors((prevCursors) => {
+        const now = Date.now();
+        const filteredCursors = prevCursors.filter((cursor) => now - cursor.timestamp < CURSOR_LIFETIME);
+
+      const updatedCursors = filteredCursors.filter((cursor) => cursor.playerId !== data.playerId);
+      return [...updatedCursors, { ...data, timestamp }];
+      
         // playerId에 따라 기존 데이터를 업데이트
-        const updatedCursors = prevCursors.filter((cursor) => cursor.playerId !== data.playerId);
-        return [...updatedCursors, data];
+        // const updatedCursors = prevCursors.filter((cursor) => cursor.playerId !== data.playerId);
+        // return [...updatedCursors, data];
       });
     });
 
@@ -82,9 +112,9 @@ const PhysicsCanvas: React.FC = () => {
 
   useEffect(() => {
     socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string }) => {
-      // console.log("playerId: ", data.playerId);
-      console.log("playerId: ", data.customId);
-      if(data.playerId !== 'player1') return;
+      console.log("playerId: ", data.playerId);
+      // console.log("customId: ", data.customId);
+      // if(data.playerId !== 'player2') return;
 
       // 도형을 생성하며 customId를 설정
       const body = createPhysicsBody(data.points, false, data.customId);
@@ -141,9 +171,10 @@ const PhysicsCanvas: React.FC = () => {
 
   useEffect(() => {
     socket.on('push', (data: { force: { x: number; y: number }; playerId: string }) => {
-      if (ballRef.current) {
+      if (ballRef.current && !pushLock) {
         const ball = ballRef.current;
         Matter.Body.applyForce(ball, ball.position, data.force);
+        setPushLock(true);
       }
     });
   
@@ -175,36 +206,110 @@ const PhysicsCanvas: React.FC = () => {
     };
   }, []);
 
-  // 상대방 커서 움직임을 캔버스에 그리기
+  // // 상대방 커서 움직임을 캔버스에 그리기
+  // useEffect(() => {
+  //   const canvas = cursorCanvasRef.current;
+  //   if (!canvas) return;
+  //   const ctx = canvas.getContext('2d');
+  //   if (!ctx) return;
+
+  //   const draw = () => {
+  //     // 캔버스를 초기화
+  //     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  //     console.log("draw");
+  //     // 모든 커서를 다시 그림
+  //     cursors.forEach(({ x, y, playerId }) => {
+  //       console.log("cursors[0].playerId: ", cursors[0].playerId);
+  //       ctx.beginPath();
+  //       ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
+  //       ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어별 색상
+  //       ctx.fill();
+  //     });
+
+  //     requestAnimationFrame(draw); // 애니메이션 프레임 요청
+  //   };
+
+  //   draw();
+
+  //   return () => {
+  //     cancelAnimationFrame(draw);
+  //   };
+  // }, [cursors]); // cursors가 변경될 때마다 다시 그림
+
+  // useEffect(() => {
+  //   const canvas = cursorCanvasRef.current;
+  //   if (!canvas) return;
+  //   const ctx = canvas.getContext('2d');
+  //   if (!ctx) return;
+  
+  //   let animationFrameId: number;
+  
+  //   const draw = () => {
+  //     // 캔버스를 초기화
+  //     ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  //     if (cursors.length > 0) {
+  //       // 모든 커서를 다시 그림
+  //       cursors.forEach(({ x, y, playerId }) => {
+  //         ctx.beginPath();
+  //         ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
+  //         ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어별 색상
+  //         ctx.fill();
+  //       });
+  //       console.log("draw"); // 조건에 상관없이 호출됨
+  //     }
+  //     animationFrameId = requestAnimationFrame(draw); // 애니메이션 프레임 요청
+  //   };
+  
+  //   draw();
+  
+  //   return () => {
+  //     cancelAnimationFrame(animationFrameId);
+  //   };
+  // }, [cursors]);
+
   useEffect(() => {
     const canvas = cursorCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
+  
+    let animationFrameId: number | null = null;
+  
     const draw = () => {
       // 캔버스를 초기화
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      console.log("draw");
-      // 모든 커서를 다시 그림
-      cursors.forEach(({ x, y, playerId }) => {
-        console.log("cursors[0].playerId: ", cursors[0].playerId);
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
-        ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어별 색상
-        ctx.fill();
-      });
-
-      requestAnimationFrame(draw); // 애니메이션 프레임 요청
+  
+      if (cursors.length > 0) {
+        // console.log("draw");
+        // 모든 커서를 다시 그림
+        cursors.forEach(({ x, y, playerId }) => {
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2); // 커서 그리기
+          ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어별 색상
+          ctx.fill();
+        });
+        // 다음 애니메이션 프레임 요청
+        animationFrameId = requestAnimationFrame(draw);
+      } else {
+        // 애니메이션 종료
+        cancelAnimationFrame(animationFrameId!);
+        animationFrameId = null;
+      }
     };
-
-    draw();
-
+  
+    if (cursors.length > 0) {
+      // 애니메이션 시작
+      draw();
+    }
+  
     return () => {
-      cancelAnimationFrame(draw);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, [cursors]); // cursors가 변경될 때마다 다시 그림
+  }, [cursors]);
 
   useEffect(() => {
     setTimeout(() => setPushLock(false), 5000);
@@ -953,12 +1058,14 @@ const PhysicsCanvas: React.FC = () => {
     if (points.length < 2) return null;
     console.log("object generated");
 
-    const logInfo: LogInfo = {
-      player_number: currentTurn === "player1" ? 1 : 2,
-      type: 'draw',
-      timestamp: new Date(),
-    };
-    saveLog(logInfo);
+    if (myGenerated) {
+      const logInfo: LogInfo = {
+        player_number: currentTurn === "player1" ? 1 : 2,
+        type: 'draw',
+        timestamp: new Date(),
+      };
+      // saveLog(logInfo);
+    }
   
     // Simplify the path to reduce physics complexity
     const simplified = points.filter((point, index) => {
@@ -1026,10 +1133,11 @@ const PhysicsCanvas: React.FC = () => {
   
       const body = Matter.Bodies.fromVertices(centroidX, centroidY, [translatedVertices], bodyOptions);
 
-      if (body && myGenerated) {
+      if (body && myGenerated && !customId) {
+        console.log("도형 데이터를 서버로 전송")
         // 도형 데이터를 서버로 전송
         const customId = body.label; // Use the label as the customId
-        socket.emit('drawShape', { points: simplified, playerId: 'player2', customId });
+        socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel });
       }
 
       return body;
@@ -1052,14 +1160,14 @@ const PhysicsCanvas: React.FC = () => {
     };
 
     if (tool === 'eraser') {
-      if(currentTurn === 'player1') return;
+      if(currentTurn === 'player2') return;
       const bodies = Matter.Composite.allBodies(engineRef.current.world);
       const mousePosition = { x: point.x, y: point.y };
       
       for (let body of bodies) {
         if (Matter.Bounds.contains(body.bounds, mousePosition) &&
             !staticObjects.includes(body.label)) {
-          Matter.World.remove(engineRef.current.world, body);
+          // Matter.World.remove(engineRef.current.world, body);
 
           const customId = body.label; // Use customId for deletion
           // Matter.World.remove(engineRef.current.world, body);
@@ -1067,10 +1175,11 @@ const PhysicsCanvas: React.FC = () => {
           // 서버에 삭제 요청 전송
           socket.emit('erase', {
             customId,
-            playerId: 'player2',
+            playerId: 'player1',
+            currentLevel
           });
 
-          socket.emit('changeTurn', { nextPlayerId: 'player1' });
+          socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
 
           // 턴 전환 로직
           // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
@@ -1080,7 +1189,7 @@ const PhysicsCanvas: React.FC = () => {
             type: 'erase',
             timestamp: new Date(),
           };
-          saveLog(logInfo);
+          // saveLog(logInfo);
 
           break;
         }
@@ -1089,17 +1198,18 @@ const PhysicsCanvas: React.FC = () => {
     }
     console.log("pushLock: ", pushLock);
 
-    if (tool === 'push' && ballRef.current && !pushLock) {
+    // if (tool === 'push' && ballRef.current && !pushLock) {
+    if (tool === 'push' && ballRef.current) {
       // push 남용 방지
-      setPushLock(true);
-      if(currentTurn === 'player1') return;
+      // setPushLock(true);
+      if(currentTurn === 'player2') return;
       
       const logInfo: LogInfo = {
         player_number: currentTurn === "player1" ? 1 : 2,
         type: 'push',
         timestamp: new Date(),
       };
-      saveLog(logInfo);
+      // saveLog(logInfo);
 
       // 턴 전환 로직
       // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
@@ -1121,19 +1231,22 @@ const PhysicsCanvas: React.FC = () => {
       const force = clickOffsetX < 0 ? { x: 0.008, y: 0 } : { x: -0.008, y: 0 };
 
       // 공에 힘을 가함
-      Matter.Body.applyForce(ball, ball.position, force);
+      // Matter.Body.applyForce(ball, ball.position, force);
 
       // 서버에 힘 적용 요청 전송
       socket.emit('push', {
         force,
-        playerId: 'player2',
+        playerId: 'player1',
+        currentLevel
       });
 
-      socket.emit('changeTurn', { nextPlayerId: 'player1' });
+      socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
     }
 
-    setIsDrawing(true);
-    setDrawPoints([point]);
+    if(currentTurn === 'player1') {
+      setIsDrawing(true);
+      setDrawPoints([point]);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1146,7 +1259,7 @@ const PhysicsCanvas: React.FC = () => {
     };
 
     // 서버로 마우스 위치 전송
-    socket.emit('mouseMove', { x: point.x, y: point.y, playerId: 'player2' });
+    socket.emit('mouseMove', { x: point.x, y: point.y, playerId: 'player1' });
 
     if(!isDrawing || tool === 'eraser') return;
 
@@ -1216,12 +1329,13 @@ const PhysicsCanvas: React.FC = () => {
     // }
   
     if (tool === 'pen') {
-      if(currentTurn === 'player1') return;
+      if(currentTurn === 'player2') return;
+      console.log("asdfkjsdlfjksld")
       const body = createPhysicsBody(drawPoints, true);
       if (body) {
-        Matter.World.add(engineRef.current.world, body);
+        // Matter.World.add(engineRef.current.world, body);
         
-        socket.emit('changeTurn', { nextPlayerId: 'player1' });
+        socket.emit('changeTurn', { nextPlayerId: 'player2' });
         // 턴 전환 로직
         // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
       }
@@ -1232,12 +1346,13 @@ const PhysicsCanvas: React.FC = () => {
   };
 
   const handleToolChange = (newTool: 'pen' | 'eraser' | 'pin' | 'push') => {
+    if (currentTurn === 'player2') return;
     setTool(newTool);
     setIsDrawing(false);
     setDrawPoints([]);
 
     // 서버로 tool 변경 전송
-    socket.emit('changeTool', { tool: newTool, playerId: 'player2' });
+    socket.emit('changeTool', { tool: newTool, playerId: 'player1', currentLevel });
   };
 
   // const handleLevelChange = (direction: 'prev' | 'next') => {
@@ -1247,35 +1362,35 @@ const PhysicsCanvas: React.FC = () => {
     if (direction === 'next') {
       if (currentLevel < TOTAL_LEVELS) {
         const newLevel = currentLevel + 1;
-        setCurrentLevel(prev => prev + 1);
-        setGameEnded(false); // 게임 종료 상태 초기화
+        // setCurrentLevel(prev => prev + 1);
+        // setGameEnded(false); // 게임 종료 상태 초기화
 
         const logInfo: LogInfo = {
           player_number: currentTurn === "player1" ? 1 : 2,
           type: 'move_next_level',
           timestamp: new Date(),
         };
-        saveLog(logInfo)
+        // saveLog(logInfo)
         
         // 서버로 레벨 변경 전송
-        socket.emit('changeLevel', { level: newLevel, direction, playerId: 'player2' });
+        socket.emit('changeLevel', { level: newLevel, currentLevel, direction, playerId: 'player1' });
       } else {
         // showTemporaryMessage("실험이 마지막 스테이지입니다");
       }
     } else {
       if (currentLevel > 1) {
         const newLevel = currentLevel - 1;
-        setCurrentLevel(prev => prev - 1);
+        // setCurrentLevel(prev => prev - 1);
         
         const logInfo: LogInfo = {
           player_number: currentTurn === "player1" ? 1 : 2,
           type: 'move_prev_level',
           timestamp: new Date(),
         };
-        saveLog(logInfo)
+        // saveLog(logInfo)
         
         // 서버로 레벨 변경 전송
-        socket.emit('changeLevel', { level: newLevel, direction, playerId: 'player2' });
+        socket.emit('changeLevel', { type: 'move_prev_level', level: newLevel, direction, playerId: 'player1', currentLevel, newLevel });
       } else {
         // showTemporaryMessage("첫 스테이지입니다");
       }
@@ -1285,43 +1400,43 @@ const PhysicsCanvas: React.FC = () => {
   const handleNextLevel = () => {
     if (currentLevel < TOTAL_LEVELS) {
       const newLevel = currentLevel + 1
-      setCurrentLevel((prevLevel) => prevLevel + 1)
+      // setCurrentLevel((prevLevel) => prevLevel + 1)
       setGameEnded(false); // 게임 종료 상태 초기화
 
       // 서버로 레벨 변경 전송
-      socket.emit('changeLevel', { level: newLevel, playerId: 'player2' });
+      socket.emit('changeLevel', { level: newLevel, playerId: 'player1' });
     } else {
-      setCurrentLevel((prevLevel) => prevLevel)
+      // setCurrentLevel((prevLevel) => prevLevel)
       setGameEnded(false); // 게임 종료 상태 초기화
     }
   }
 
   const resetLevel = () => {
-    setResetTrigger((prev) => !prev);
+    // setResetTrigger((prev) => !prev);
 
-    // 월드와 렌더를 정지하고 지운 후, 다시 설정
-    const world = engineRef.current.world;
-    Matter.World.clear(world, false);
-    Matter.Engine.clear(engineRef.current);
+    // // 월드와 렌더를 정지하고 지운 후, 다시 설정
+    // const world = engineRef.current.world;
+    // Matter.World.clear(world, false);
+    // Matter.Engine.clear(engineRef.current);
   
-    // 맵 초기화 - 렌더도 초기화하여 재설정
-    if (renderRef.current) {
-      Matter.Render.stop(renderRef.current);
-      Matter.Render.run(renderRef.current);
-    }
+    // // 맵 초기화 - 렌더도 초기화하여 재설정
+    // if (renderRef.current) {
+    //   Matter.Render.stop(renderRef.current);
+    //   Matter.Render.run(renderRef.current);
+    // }
     
     // 현재 레벨에 대한 설정을 다시 불러옴
-    setCurrentLevel(currentLevel); // 이로 인해 useEffect가 실행됨
+    // setCurrentLevel(currentLevel); // 이로 인해 useEffect가 실행됨
 
     const logInfo: LogInfo = {
       player_number: currentTurn === "player1" ? 1 : 2,
       type: 'refresh',
       timestamp: new Date(),
     };
-    saveLog(logInfo);
+    // saveLog(logInfo);
 
     // 서버로 초기화 이벤트 전송
-    socket.emit('resetLevel', { level: currentLevel });
+    socket.emit('resetLevel', { playerId: 'player1', level: currentLevel });
   };
 
   // 누적해서 csv 파일 업데이트
@@ -1332,7 +1447,12 @@ const PhysicsCanvas: React.FC = () => {
         type: logInfo.type,
         timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
       })
-      await axios.post('https://13.239.234.81.nip.io/logger/log', {
+      // await axios.post('http://ec2-13-125-215-243.ap-northeast-2.compute.amazonaws.com:3000/logger/log', {
+      //   player_number: logInfo.player_number,
+      //   type: logInfo.type,
+      //   timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
+      // });
+      await axios.post('http://localhost:3000/logger/log', {
         player_number: logInfo.player_number,
         type: logInfo.type,
         timestamp: logInfo.timestamp.toISOString(), // Convert timestamp to ISO format
@@ -1354,147 +1474,172 @@ const PhysicsCanvas: React.FC = () => {
     ctx.fillStyle = playerId === 'player1' ? 'blue' : 'red'; // 플레이어에 따라 색상 다르게
     ctx.fill();
   };
+  
+  const handleButtonClick = () => {
+    console.log('Current cursors length:', cursors.length);
+  };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex gap-4 mb-4">
-        <button
-          onClick={() => resetLevel()}
-          className={`p-2 rounded 'bg-gray-200'`}
-        >
-          <RefreshCw size={24} />
-        </button>
-        <button
-          onClick={() => handleToolChange('pen')}
-          className={`p-2 rounded ${
-            tool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-          }`}
-        >
-          <Pen size={24} />
-        </button>
-        <button
-          onClick={() => handleToolChange('eraser')}
-          className={`p-2 rounded ${
-            tool === 'eraser' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-          }`}
-        >
-          <Eraser size={24} />
-        </button>
-        {/* <button
-          onClick={() => handleToolChange('pin')}
-          className={`p-2 rounded ${
-            tool === 'pin' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-          }`}
-        >
-          <Pin size={24} />
-        </button> */}
-        {/* 밀기 도구 버튼 */}
-        <button
-          onClick={() => handleToolChange('push')}
-          className={`p-2 rounded relative ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden'
-          }}
-        >
-          {/* 공을 뒤에 배치 */}
-          <Circle size={20} style={{ position: 'absolute', left: '6px', zIndex: 1 }} />
-          {/* 손이 약간 겹치도록 배치 */}
-          <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
-        <h2
-          className={`text-lg font-bold ${
-            currentTurn === 'player1' ? 'text-blue-500' : 'text-red-500'
-          }`}
-        >
-          {currentTurn === 'player1' ? "Player1 Turn" : "Player2 Turn"}
-        </h2>
-      </div>
-      
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={600}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          className="border border-gray-300 rounded-lg shadow-lg"
-          style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
-        />
-        
-        {/* 커서를 표시하는 별도의 캔버스 */}
-        <canvas
-          ref={cursorCanvasRef}
-          width={800}
-          height={600}
-          className="absolute top-0 left-0 border border-transparent pointer-events-none"
-          style={{
-            zIndex: 10, // 게임 캔버스 위에 렌더링
-          }}
-        />
-        
-        {isDrawing && tool === 'pen' && (
-          <svg
+    // <div>
+    //   {isFinished ? (
+    //     // 팝업 화면
+    //     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+    //       <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+    //         <h2 className="text-2xl font-bold mb-4">Timer Finished</h2>
+    //         <button
+    //           onClick={() => setIsFinished(false)} // 팝업 닫기 버튼
+    //           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+    //         >
+    //           Close
+    //         </button>
+    //       </div>
+    //     </div>
+    //   ) : (
+      <div className="flex flex-col items-center gap-4">
+        {/* <Timer startTimer={startTimer} onFinish={handleTimerFinish} /> */}
+        <div className="flex gap-4 mb-4">
+          {/* <div>
+            <button onClick={handleButtonClick}>Show Cursors Length</button>
+          </div> */}
+          <button
+            onClick={() => resetLevel()}
+            className={`p-2 rounded 'bg-gray-200'`}
+          >
+            <RefreshCw size={24} />
+          </button>
+          <button
+            onClick={() => handleToolChange('pen')}
+            className={`p-2 rounded ${
+              tool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+          >
+            <Pen size={24} />
+          </button>
+          <button
+            onClick={() => handleToolChange('eraser')}
+            className={`p-2 rounded ${
+              tool === 'eraser' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+          >
+            <Eraser size={24} />
+          </button>
+          {/* <button
+            onClick={() => handleToolChange('pin')}
+            className={`p-2 rounded ${
+              tool === 'pin' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+          >
+            <Pin size={24} />
+          </button> */}
+          {/* 밀기 도구 버튼 */}
+          <button
+            onClick={() => handleToolChange('push')}
+            className={`p-2 rounded relative ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden'
             }}
+          >
+            {/* 공을 뒤에 배치 */}
+            <Circle size={20} style={{ position: 'absolute', left: '6px', zIndex: 1 }} />
+            {/* 손이 약간 겹치도록 배치 */}
+            <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <h2
+            className={`text-lg font-bold ${
+              currentTurn === 'player1' ? 'text-blue-500' : 'text-red-500'
+            }`}
+          >
+            {currentTurn === 'player1' ? "Player1 Turn" : "Player2 Turn"}
+          </h2>
+        </div>
+        
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
             width={800}
             height={600}
-          >
-            <path
-              d={`M ${drawPoints.map(p => `${p.x},${p.y}`).join(' L ')}`}
-              fill="none"
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeDasharray="4"
-            />
-          </svg>
-        )}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className="border border-gray-300 rounded-lg shadow-lg"
+            style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
+          />
+          
+          {/* 커서를 표시하는 별도의 캔버스 */}
+          <canvas
+            ref={cursorCanvasRef}
+            width={800}
+            height={600}
+            className="absolute top-0 left-0 border border-transparent pointer-events-none"
+            style={{
+              zIndex: 10, // 게임 캔버스 위에 렌더링
+            }}
+          />
+          
+          {isDrawing && tool === 'pen' && (
+            <svg
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                pointerEvents: 'none',
+              }}
+              width={800}
+              height={600}
+            >
+              <path
+                d={`M ${drawPoints.map(p => `${p.x},${p.y}`).join(' L ')}`}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeDasharray="4"
+              />
+            </svg>
+          )}
 
-        {gameEnded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl">
-              <h2 className="text-3xl font-bold text-center mb-4">End of Game!</h2>
-              <button
-                onClick={() => handleNextLevel()}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                {currentLevel < TOTAL_LEVELS ? 'Next Level' : 'Okay'}
-              </button>
+          {gameEnded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-white p-8 rounded-lg shadow-xl">
+                <h2 className="text-3xl font-bold text-center mb-4">End of Game!</h2>
+                <button
+                  onClick={() => handleNextLevel()}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  {currentLevel < TOTAL_LEVELS ? 'Next Level' : 'Okay'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => handleLevelChange('prev')}
-          disabled={currentLevel === 1}
-          className="p-2 rounded bg-gray-200 disabled:opacity-50"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <span className="py-2 px-4 bg-gray-100 rounded">Level {currentLevel}</span>
-        <button
-          onClick={() => handleLevelChange('next')}
-          disabled={currentLevel === TOTAL_LEVELS}
-          className="p-2 rounded bg-gray-200 disabled:opacity-50"
-        >
-          <ChevronRight size={24} />
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={() => handleLevelChange('prev')}
+            disabled={currentLevel === 1}
+            className="p-2 rounded bg-gray-200 disabled:opacity-50"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <span className="py-2 px-4 bg-gray-100 rounded">Level {currentLevel}</span>
+          <button
+            onClick={() => handleLevelChange('next')}
+            disabled={currentLevel === TOTAL_LEVELS}
+            className="p-2 rounded bg-gray-200 disabled:opacity-50"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
       </div>
-    </div>
+      // )}
+    // </div>
   );
 };
 
