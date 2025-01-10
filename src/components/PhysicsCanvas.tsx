@@ -44,6 +44,16 @@ const PhysicsCanvas: React.FC = () => {
   // const [startTimer, setStartTimer] = useState<boolean>(false);
   // const [isFinished, setIsFinished] = useState<boolean>(false);
 
+  // 못(nail)들을 저장하는 상태
+  const [nails, setNails] = useState<Matter.Body[]>([]);
+  const nailsRef = useRef<Matter.Body[]>([]);
+
+  // nail 추가 함수
+  const addNail = (nail: Matter.Body) => {
+    nailsRef.current = [...nailsRef.current, nail];
+    setNails(nailsRef.current); // 상태 업데이트도 유지
+  };
+
   // // 타이머 시작 이벤트 처리
   // useEffect(() => {
   //   socket.on('startTimer', () => {
@@ -110,23 +120,308 @@ const PhysicsCanvas: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string }) => {
-      console.log("playerId: ", data.playerId);
-      // console.log("customId: ", data.customId);
-      // if(data.playerId !== 'player2') return;
+  // useEffect(() => {
+  //   socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string; nailsInShape?: { label: string; position: Matter.Vector; collisionFilter: any }[] }) => {
+  //     console.log("playerId: ", data.playerId);
+  //     // console.log("customId: ", data.customId);
+  //     // if(data.playerId !== 'player2') return;
 
-      // 도형을 생성하며 customId를 설정
-      const body = createPhysicsBody(data.points, false, data.customId);
+  //     // 도형을 생성하며 customId를 설정
+  //     const result = createPhysicsBody(data.points, false, data.customId);
   
-      if (body) {
-        // Matter.js 월드에 도형 추가
-        Matter.World.add(engineRef.current.world, body);
+  //     if (result) {
+  //       if (result.body) {
+  //         // 못(nail)을 포함한 객체의 충돌 규칙 수정
+  //         // if (result.body && data.nailsInShape && data.nailsInShape.length > 0) {
+  //         //   // 모든 nail의 카테고리를 병합
+  //         //   const combinedCategory = data.nailsInShape.reduce((acc, nail) => {
+  //         //     return acc | (nail.collisionFilter?.category || 0); // 기본값 0 처리
+  //         //   }, 0);
+          
+  //         //   // result.body의 collisionFilter 업데이트
+  //         //   result.body.collisionFilter = {
+  //         //     category: combinedCategory, // 병합된 카테고리
+  //         //     mask: 0xFFFF & ~combinedCategory, // 같은 카테고리와 충돌하지 않도록 설정
+  //         //   };
+          
+  //         //   console.log(`Updated body collisionFilter: `, result.body.collisionFilter);
+  //         // }
+        
+  //         console.log("result.body: ", result.body)
+  //         console.log("data.nailsInShape: ", data.nailsInShape)
+  //         console.log("data.nailsInShape.length: ", data.nailsInShape?.length)
+  //         if (data.nailsInShape && data.nailsInShape.length > 0) {
+  //           console.log("sdfakljsdjfaskljskldj")
+  //           // 복원된 nailsInShape
+  //           const restoredNailsInShape = data.nailsInShape.map((nail) =>
+  //             Matter.Bodies.circle(nail.position.x, nail.position.y, 5, {
+  //               isStatic: true,
+  //               collisionFilter: nail.collisionFilter,
+  //               render: {
+  //                 fillStyle: '#ef4444',
+  //               },
+  //               label: nail.label,
+  //             })
+  //           );
+
+  //           console.log("Restored nailsInShape: ", restoredNailsInShape);
+            
+  //           // 모든 nail의 카테고리를 병합
+  //           const combinedCategory = restoredNailsInShape.reduce((acc, nail) => {
+  //             return acc | (nail.collisionFilter?.category || 0); // 기본값 0 처리
+  //           }, 0);
+          
+  //           // 모든 관련 body를 추적하기 위한 Set
+  //           const visitedBodies = new Set<Matter.Body>();
+          
+  //           // Constraint로 연결된 모든 body를 탐색
+  //           const findConnectedBodies = (nail: Matter.Body) => {
+  //             // Matter.Composite 내의 모든 Constraints를 검색
+  //             Matter.Composite.allConstraints(engineRef.current.world).forEach((constraint) => {
+  //               if (constraint.bodyA === nail || constraint.bodyB === nail) {
+  //                 // 연결된 body를 결정
+  //                 const connectedBody = constraint.bodyA === nail ? constraint.bodyB : constraint.bodyA;
+            
+  //                 // null 확인
+  //                 if (connectedBody && !visitedBodies.has(connectedBody)) {
+  //                   visitedBodies.add(connectedBody);
+            
+  //                   // 재귀적으로 연결된 body 탐색
+  //                   findConnectedBodies(connectedBody);
+  //                 }
+  //               }
+  //             });
+  //           };
+          
+  //           // restoredNailsInShape의 모든 nail에 대해 연결된 body 탐색
+  //           restoredNailsInShape.forEach((nail) => {
+  //             visitedBodies.add(nail);
+  //             findConnectedBodies(nail);
+  //           });
+  //           console.log("visitedBodies: ", visitedBodies);
+          
+  //           // 모든 관련 body의 collisionFilter.category를 동일하게 설정
+  //           visitedBodies.forEach((body) => {
+  //             body.collisionFilter = {
+  //               category: combinedCategory, // 병합된 카테고리
+  //               mask: 0xFFFF & ~combinedCategory, // 같은 카테고리와 충돌하지 않도록 설정
+  //             };
+  //             console.log(`Updated body collisionFilter: `, body.label, body.collisionFilter);
+  //           });
+  //         }
+
+  //         Matter.Composite.allBodies(engineRef.current.world).forEach((body) => {
+  //           console.log(`Body: ${body.label}`);
+  //           console.log(`Category: ${body.collisionFilter?.category}`);
+  //           console.log(`Mask: ${body.collisionFilter?.mask}`);
+  //         });
+
+  //         console.log(`--------------------------------`);
+
+  //         // Matter.js 월드에 도형 추가
+  //         Matter.World.add(engineRef.current.world, result.body);
+  
+  //         // console.log("nails (from ref): ", nailsRef.current);
+  //         // console.log("nailsInShape: ", result.nailsInShape);
+  
+  //         // nailsInShape와 생성된 도형을 Constraint로 연결
+  //         result.nailsInShape.forEach((nail) => {
+  //           const constraint = Matter.Constraint.create({
+  //             bodyA: result.body, // 도형
+  //             pointA: { x: nail.position.x - result.body.position.x, y: nail.position.y - result.body.position.y }, // 도형 내 nail의 상대 위치
+  //             bodyB: nail, // nail
+  //             pointB: { x: 0, y: 0 }, // nail 중심
+  //             stiffness: 1, // 강성
+  //             length: 0, // 연결 길이
+  //             render: {
+  //               visible: false, // Constraint 시각화를 비활성화
+  //             }
+  //           });
+  
+  //           // Matter.js 월드에 Constraint 추가
+  //           Matter.Composite.add(engineRef.current.world, constraint);
+  //         });
+  //       }
+  //     }
+  //   });
+  
+  
+  //   return () => {
+  //     socket.off('drawShape');
+  //   };
+  // }, []);
+
+  useEffect(() => {
+    socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string; nailsInShape?: { label: string; position: Matter.Vector; collisionFilter: any }[] }) => {
+      console.log("playerId: ", data.playerId);
+  
+      // 도형을 생성하며 customId를 설정
+      const result = createPhysicsBody(data.points, false, data.customId);
+  
+      if (result) {
+        if (result.body) {
+          console.log("result.body: ", result.body);
+          console.log("data.nailsInShape: ", data.nailsInShape);
+  
+          if (result.body && data.nailsInShape && data.nailsInShape.length > 0) {
+            console.log("Processing nailsInShape...");
+  
+            // 모든 nail의 카테고리를 병합
+            const combinedCategory = data.nailsInShape.reduce((acc, nail) => {
+              return acc | (nail.collisionFilter?.category || 0); // 기본값 0 처리
+            }, 0);
+  
+            // 모든 관련 body를 추적하기 위한 Set
+            const visitedBodies = new Set<Matter.Body>();
+  
+            // Constraint로 연결된 모든 body를 탐색
+            const findConnectedBodies = (nail: { label: string; position: Matter.Vector; collisionFilter: any }) => {
+              // Matter.Composite 내의 모든 Constraints를 검색
+              Matter.Composite.allConstraints(engineRef.current.world).forEach((constraint) => {
+                const connectedBody = 
+                  (constraint.bodyA && constraint.bodyA.label === nail.label) 
+                    ? constraint.bodyB 
+                    : (constraint.bodyB && constraint.bodyB.label === nail.label)
+                    ? constraint.bodyA 
+                    : null;
+  
+                // null 확인 및 중복 방지
+                if (connectedBody && !visitedBodies.has(connectedBody)) {
+                  visitedBodies.add(connectedBody);
+  
+                  // 재귀적으로 연결된 body 탐색
+                  findConnectedBodies({
+                    label: connectedBody.label,
+                    position: connectedBody.position,
+                    collisionFilter: connectedBody.collisionFilter,
+                  });
+                }
+              });
+            };
+  
+            // nailsInShape의 모든 nail에 대해 연결된 body 탐색
+            data.nailsInShape.forEach((nail) => {
+              findConnectedBodies(nail);
+            });
+            console.log("visitedBodies: ", visitedBodies);
+  
+            // 모든 관련 body의 collisionFilter.category를 동일하게 설정
+            visitedBodies.forEach((body) => {
+              body.collisionFilter = {
+                category: combinedCategory, // 병합된 카테고리
+                mask: 0xFFFF & ~combinedCategory, // 같은 카테고리와 충돌하지 않도록 설정
+              };
+              console.log(`Updated body collisionFilter: `, body.label, body.collisionFilter);
+            });
+          }
+  
+          Matter.Composite.allBodies(engineRef.current.world).forEach((body) => {
+            console.log(`Body: ${body.label}`);
+            console.log(`Category: ${body.collisionFilter?.category}`);
+            console.log(`Mask: ${body.collisionFilter?.mask}`);
+          });
+  
+          console.log(`--------------------------------`);
+  
+          // Matter.js 월드에 도형 추가
+          Matter.World.add(engineRef.current.world, result.body);
+  
+          // nailsInShape와 생성된 도형을 Constraint로 연결
+          if (result.nailsInShape) {
+            result.nailsInShape.forEach((nail) => {
+              const constraint = Matter.Constraint.create({
+                bodyA: result.body, // 도형
+                pointA: { x: nail.position.x - result.body.position.x, y: nail.position.y - result.body.position.y }, // 도형 내 nail의 상대 위치
+                bodyB: nail, // nail
+                pointB: { x: 0, y: 0 }, // nail 중심
+                stiffness: 1, // 강성
+                length: 0, // 연결 길이
+                render: {
+                  visible: false, // Constraint 시각화를 비활성화
+                },
+              });
+  
+              // Matter.js 월드에 Constraint 추가
+              Matter.Composite.add(engineRef.current.world, constraint);
+            });
+          }
+        }
       }
     });
   
     return () => {
       socket.off('drawShape');
+    };
+  }, []);
+
+  useEffect(() => {
+    // drawPin 이벤트 처리
+    const handleDrawPin = (data: { customId: string; centerX: number; centerY: number; radius: number; category: number; playerId: string; currentLevel: number }) => {
+      console.log("Received drawPin data: ", data);
+
+      // 클릭 위치에 존재하는 사물을 찾음
+      const mousePosition = { x: data.centerX, y: data.centerY };
+      const bodies = Matter.Composite.allBodies(engineRef.current.world);
+      const targetBody = bodies.find((body) =>
+        Matter.Bounds.contains(body.bounds, mousePosition)
+      );
+
+      // 사물이 없으면 못을 생성하지 않음
+      if (!targetBody) {
+        console.log("No body found under the nail position.");
+        return null;
+      }
+  
+      // 못(nail) 생성
+      const nail = Matter.Bodies.circle(data.centerX, data.centerY, data.radius, {
+        isStatic: targetBody.isStatic ? true : false,
+        collisionFilter: {
+          category: data.category, // Nail의 카테고리
+          mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
+        },
+        render: {
+          fillStyle: '#ef4444', // 못의 색상
+        },
+        label: data.customId || `nail_${Date.now()}`, // Assign customId
+      });
+
+      // 못(nail)을 포함한 객체의 충돌 규칙 수정
+      targetBody.collisionFilter = {
+        category: data.category, // Nail과 같은 카테고리
+        mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
+      }
+
+      // 상태에 nail 추가
+      addNail(nail);
+      console.log("sdfnail: ", nail);
+      console.log("sdfnails: ", nails);
+      
+      // Matter.js 월드에 nail 추가
+      Matter.Composite.add(engineRef.current.world, nail);
+
+      // 도형(targetBody)와 못(nail)을 Constraint로 연결
+      const constraint = Matter.Constraint.create({
+        bodyA: targetBody, // 도형
+        pointA: { x: mousePosition.x - targetBody.position.x, y: mousePosition.y - targetBody.position.y }, // 도형 내부의 연결 지점
+        bodyB: nail, // 못
+        pointB: { x: 0, y: 0 }, // 못의 중심
+        stiffness: 1, // 강성(도형과 못의 연결 강도)
+        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
+        render: {
+          visible: false, // Constraint 시각화를 비활성화
+        },
+      });
+
+      // Matter.js 월드에 Constraint 추가
+      Matter.Composite.add(engineRef.current.world, constraint);
+    };
+  
+    // 소켓 이벤트 리스너 등록
+    socket.on('drawPin', handleDrawPin);
+  
+    return () => {
+      // 리스너 정리
+      socket.off('drawPin', handleDrawPin);
     };
   }, []);
 
@@ -1058,6 +1353,12 @@ const PhysicsCanvas: React.FC = () => {
     if (points.length < 2) return null;
     console.log("object generated");
 
+    if(myGenerated) {
+      console.log("myGenerated True, points: ", points)
+    } else {
+      console.log("myGenerated False, points: ", points)
+    }
+
     if (myGenerated) {
       const logInfo: LogInfo = {
         player_number: currentTurn === "player1" ? 1 : 2,
@@ -1074,6 +1375,97 @@ const PhysicsCanvas: React.FC = () => {
       const dist = Math.hypot(point.x - prev.x, point.y - prev.y);
       return dist > 2;
     });
+
+    if(myGenerated) {
+      console.log("myGenerated True, nails: ", nails)
+    } else {
+      console.log("myGenerated False, nails: ", nails)
+    }
+
+    // Nail 검출: points와의 접점이 있는 nail 찾기
+    const nailsInShape: Matter.Body[] = nailsRef.current.filter((nail) => {
+      const shapeBounds = Matter.Bounds.create(simplified); // 도형의 경계 생성
+      return Matter.Bounds.overlaps(nail.bounds, shapeBounds); // nail과 도형의 경계 비교
+    });
+
+    console.log("nailsInShape(sdfadfsfds): ", nailsInShape);
+
+    if (!myGenerated && nailsInShape.length > 0) {
+      console.log("Detected ${nailsInShape.length} nails inside the shape.");
+    }
+
+    // **핀 로직 수정**
+    if (tool === 'pin') {
+      // 중심점 계산: points를 기반으로
+      const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+      const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+
+      // 최대 반경 계산: points를 기반으로
+      const radius = Math.max(
+        ...points.map(p => Math.hypot(p.x - centerX, p.y - centerY))
+      );
+
+      // 클릭 위치에 존재하는 사물을 찾음
+      const mousePosition = { x: centerX, y: centerY };
+      const bodies = Matter.Composite.allBodies(engineRef.current.world);
+      const targetBody = bodies.find((body) =>
+        Matter.Bounds.contains(body.bounds, mousePosition) &&
+        !staticObjects.includes(body.label) // 고정된 사물은 제외
+      );
+
+      // 사물이 없으면 못을 생성하지 않음
+      if (!targetBody) {
+        console.log("No body found under the nail position.");
+        return null;
+      }
+
+      // 못(nail) 생성
+      const nail = Matter.Bodies.circle(centerX, centerY, radius, {
+        isStatic: targetBody.isStatic ? true : false,
+        collisionFilter: {
+          category: 0x0002, // Nail의 카테고리
+          mask: 0x0000,     // 어떤 것도 충돌하지 않도록 설정
+        },
+        render: {
+          fillStyle: '#ef4444', // 못의 색상
+        },
+        label: customId || `nail_${Date.now()}`, // Assign customId
+      });
+
+      // 상태에 nail 추가
+      addNail(nail);
+      console.log("sdfnail: ", nail);
+      console.log("sdfnails: ", nails);
+      
+      // Matter.js 월드에 nail 추가
+      Matter.Composite.add(engineRef.current.world, nail);
+
+      // 도형(targetBody)와 못(nail)을 Constraint로 연결
+      const constraint = Matter.Constraint.create({
+        bodyA: targetBody, // 도형
+        pointA: { x: mousePosition.x - targetBody.position.x, y: mousePosition.y - targetBody.position.y }, // 도형 내부의 연결 지점
+        bodyB: nail, // 못
+        pointB: { x: 0, y: 0 }, // 못의 중심
+        stiffness: 1, // 강성(도형과 못의 연결 강도)
+        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
+        render: {
+          visible: false, // Constraint 시각화를 비활성화
+        },
+      });
+
+      // Matter.js 월드에 Constraint 추가
+      Matter.Composite.add(engineRef.current.world, constraint);
+
+      if (myGenerated && !customId) {
+        console.log("핀 데이터를 서버로 전송");
+
+        // 핀 데이터를 서버로 전송
+        const customId = nail.label;
+        socket.emit('drawPin', { centerX, centerY, radius, playerId: 'player1', customId, currentLevel, nailsInShape });
+      }
+
+      return {body: nail, nailsInShape: []};
+    }
   
     // Check if points are in a nearly straight line by comparing distances
     if (simplified.length === 2) {
@@ -1082,7 +1474,7 @@ const PhysicsCanvas: React.FC = () => {
       const angle = Math.atan2(end.y - start.y, end.x - start.x);
   
       // Create a thin rectangle to represent the line
-      return Matter.Bodies.rectangle(
+      return {body: Matter.Bodies.rectangle(
         (start.x + end.x) / 2, // Center X
         (start.y + end.y) / 2, // Center Y
         distance, // Width of the line (distance between points)
@@ -1101,7 +1493,7 @@ const PhysicsCanvas: React.FC = () => {
           density: 0.01,
           label: customId || `custom_${Date.now()}`, // Assign customId
         }
-      );
+      ), nailsInShape: []};
     }
   
     // For shapes with more points, create a closed polygonal body
@@ -1131,16 +1523,33 @@ const PhysicsCanvas: React.FC = () => {
         y: v.y - centroidY,
       }));
   
-      const body = Matter.Bodies.fromVertices(centroidX, centroidY, [translatedVertices], bodyOptions);
+      const body = Matter.Bodies.fromVertices(centroidX, centroidY, [translatedVertices], {
+        ...bodyOptions,
+        collisionFilter: (nailsInShape.length > 0 && !myGenerated) ? {
+          category: 0x0004, // body의 카테고리
+          mask: 0x0000, // 어떤 것도 충돌하지 않도록 설정
+        } : {
+          category: 0x0002, // 기본 카테고리
+          mask: 0xFFFF, // 모든 것과 충돌
+        },
+      });
 
       if (body && myGenerated && !customId) {
         console.log("도형 데이터를 서버로 전송")
         // 도형 데이터를 서버로 전송
         const customId = body.label; // Use the label as the customId
-        socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel });
+
+        // nailsInShape를 단순화하여 전송
+        const simplifiedNailsInShape = nailsInShape.map(nail => ({
+          label: nail.label,
+          position: nail.position,
+          collisionFilter: nail.collisionFilter,
+        }));
+
+        socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel, nailsInShape: simplifiedNailsInShape });
       }
 
-      return body;
+      return {body, nailsInShape};
     }
   
     return null;
@@ -1328,7 +1737,7 @@ const PhysicsCanvas: React.FC = () => {
     //   return;
     // }
   
-    if (tool === 'pen') {
+    if (tool === 'pen' || tool === 'pin') {
       if(currentTurn === 'player2') return;
       console.log("asdfkjsdlfjksld")
       const body = createPhysicsBody(drawPoints, true);
@@ -1523,14 +1932,14 @@ const PhysicsCanvas: React.FC = () => {
           >
             <Eraser size={24} />
           </button>
-          {/* <button
+          <button
             onClick={() => handleToolChange('pin')}
             className={`p-2 rounded ${
               tool === 'pin' ? 'bg-blue-500 text-white' : 'bg-gray-200'
             }`}
           >
             <Pin size={24} />
-          </button> */}
+          </button>
           {/* 밀기 도구 버튼 */}
           <button
             onClick={() => handleToolChange('push')}
