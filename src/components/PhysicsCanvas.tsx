@@ -41,7 +41,7 @@ const PhysicsCanvas: React.FC = () => {
   const CURSOR_LIFETIME = 2000; // 2초
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
-  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform'];
+  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform', 'nail4_0', 'nail4_1', 'nail4_2', 'nail8_0', 'horizontalPlatformForBall', 'horizontalPlatform', 'slope', 'horizontalPlatformForStar', 'cloud', 'scoop', 'obstacle', 'floor', 'Ishape', 'upperrectangle', 't_shape'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,9 +56,18 @@ const PhysicsCanvas: React.FC = () => {
   const nailsRef = useRef<Matter.Body[]>([]);
 
   // nail 추가 함수
+  // const addNail = (nail: Matter.Body) => {
+  //   nailsRef.current = [...nailsRef.current, nail];
+  //   setNails(nailsRef.current); // 상태 업데이트도 유지
+  // };
   const addNail = (nail: Matter.Body) => {
-    nailsRef.current = [...nailsRef.current, nail];
-    setNails(nailsRef.current); // 상태 업데이트도 유지
+    // 이미 같은 label이 존재하는지 확인
+    const exists = nailsRef.current.some(existingNail => existingNail.label === nail.label);
+    
+    if (!exists) {
+      nailsRef.current = [...nailsRef.current, nail];
+      setNails(nailsRef.current); // 상태 업데이트도 유지
+    }
   };
 
   // nails에서 특정 nail 삭제 함수
@@ -1313,12 +1322,12 @@ const PhysicsCanvas: React.FC = () => {
 
       const horizontalPlatformForBall = Matter.Bodies.rectangle(150, 500, 30, 30, {
         isStatic: true,
-        label: 'horizontal_platform',
+        label: 'horizontalPlatformForBall',
         render: { fillStyle: '#6b7280' },
         collisionFilter: {
           category: 0x0001,
           mask: 0xFFFF,
-        }
+        },
       });
 
       const horizontalPlatform = Matter.Bodies.rectangle(500, 565, 500, 100, {
@@ -1334,6 +1343,7 @@ const PhysicsCanvas: React.FC = () => {
       // 경사면으로 사용할 회전된 직사각형 body 생성
       const slope = Matter.Bodies.rectangle(615, 498, 200, 5, {
         isStatic: true, // 고정된 경사면이므로 isStatic을 true로 설정
+        label: 'slope',
         angle: -Math.PI / 15, // 시계 반대방향으로 22.5도 회전 (경사면 경사각도 조절)
         render: {
           fillStyle: '#6c757d',
@@ -1342,7 +1352,7 @@ const PhysicsCanvas: React.FC = () => {
 
       const horizontalPlatformForStar = Matter.Bodies.rectangle(730, 495, 40, 40, {
         isStatic: true,
-        label: 'horizontal_platform',
+        label: 'horizontalPlatformForStar',
         render: { fillStyle: '#6b7280' },
         collisionFilter: {
           category: 0x0001,
@@ -1367,6 +1377,7 @@ const PhysicsCanvas: React.FC = () => {
       // 구름 Body 생성, (400, 300) 위치에 생성됨.
       const cloud = Matter.Bodies.fromVertices(150, 300, [cloudVertices], {
         isStatic: true,
+        label: 'cloud',
         render: {
           fillStyle: 'rgba(0, 0, 0, 0.0)',
           strokeStyle: '#397896',
@@ -1624,7 +1635,7 @@ const PhysicsCanvas: React.FC = () => {
       });
 
 
-      socket.emit('registerPin', { centerX4_1, centerY4_1, radius4, playerId: 'player1', customId: 'nail4_1', currentLevel});
+      // socket.emit('registerPin', { centerX4_1, centerY4_1, radius4, playerId: 'player1', customId: 'nail4_1', currentLevel});
       
       // 상태에 nail 추가
       addNail(nail4_1);
@@ -1649,7 +1660,7 @@ const PhysicsCanvas: React.FC = () => {
       });
 
 
-      socket.emit('registerPin', { centerX4_1, centerY4_1, radius4, playerId: 'player1', customId: 'nail4_2', currentLevel});
+      // socket.emit('registerPin', { centerX4_1, centerY4_1, radius4, playerId: 'player1', customId: 'nail4_2', currentLevel});
       
       // 상태에 nail 추가
       addNail(nail4_2);
@@ -2441,6 +2452,7 @@ const PhysicsCanvas: React.FC = () => {
       });
 
       const Tshape = Matter.Body.create({
+        label: 't_shape',
         parts: [upperrectangle, Ishape],
         collisionFilter: {
           group: -1,
@@ -2809,8 +2821,7 @@ const PhysicsCanvas: React.FC = () => {
                 customId: body.label,
                 playerId: 'player1',
                 currentLevel,
-                isRelease: false,
-                
+                isFall: true,
               });
               // Matter.World.remove(world, body); // 완전히 투명해지면 제거
             }
@@ -3384,14 +3395,14 @@ const PhysicsCanvas: React.FC = () => {
         body.label && body.label.startsWith('nail')
       );
 
-      if(nailBodies.length > 0) {
+      if(nailBodies.length > 0 && !staticObjects.includes(nailBodies[0].label)) {
         const customId = nailBodies[0].label;
         // 서버에 삭제 요청 전송
         socket.emit('erase', {
           customId,
           playerId: 'player2',
           currentLevel,
-          isRelease: false,
+          isFall: false,
         });
 
         socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
@@ -3412,6 +3423,7 @@ const PhysicsCanvas: React.FC = () => {
     
         // customId는 해당 Constraint의 label을 사용 (사전에 chain Constraint 생성 시 label이 "chain_..." 형태로 설정되어 있어야 함)
         const customId = targetConstraint.label;
+        if(!customId.startsWith("chain")) return;
     
         // 서버에 삭제 요청 전송
         socket.emit('erase', {
