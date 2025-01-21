@@ -472,7 +472,7 @@ const PhysicsCanvas: React.FC = () => {
           if (result.nailsInShape.length > 0) {
             const targetBody = result.body;
 
-            if (currentLevel === 3) {
+            if (data.currentLevel === 3) {
               console.log("sfdasdasfd")
               Matter.Body.setAngularVelocity(result.body, -0.05);
             }
