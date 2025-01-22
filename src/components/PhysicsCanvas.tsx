@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Matter from 'matter-js';
+import Matter, { Engine } from 'matter-js';
 import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle, Link } from 'lucide-react';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
@@ -9,6 +9,12 @@ interface LogInfo {
   player_number: number,
   type: 'draw' | 'erase' | 'push' | 'refresh' | 'move_prev_level' | 'move_next_level',
   timestamp: Date,
+}
+
+declare module 'matter-js' {
+  interface Body {
+    eraserEmitted?: boolean;
+  }
 }
 
 const TOTAL_LEVELS = 10; // 총 스테이지 수를 정의합니다.
@@ -26,6 +32,7 @@ const PhysicsCanvas: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPoints, setDrawPoints] = useState<Matter.Vector[]>([]);
   const [currentLevel, setCurrentLevel] = useState(1);
+  const currentLevelRef = useRef<number>(1);
   const [resetTrigger, setResetTrigger] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [currentTurn, setCurrentTurn] = useState<string>('player1');
@@ -628,6 +635,7 @@ const PhysicsCanvas: React.FC = () => {
   
       // 수신한 레벨로 초기화
       setCurrentLevel(data.level);
+      currentLevelRef.current = data.level //
       setResetTrigger((prev) => !prev);
     });
   
@@ -927,6 +935,7 @@ const PhysicsCanvas: React.FC = () => {
       console.log(`Level changed to: ${data.level} by player: ${data.playerId}`);
       resetNails();
       setCurrentLevel(data.level); // 레벨 업데이트
+      currentLevelRef.current = data.level //
       setGameEnded(false); // 게임 종료 상태 초기화
     });
   
@@ -2750,7 +2759,13 @@ const PhysicsCanvas: React.FC = () => {
       // ballRef.current = ball;
     }
 
-    Matter.Events.on(engineRef.current, 'collisionStart', (event) => {
+    // 공이 wall_bottom 아래로 떨어졌는지 확인
+    const handleCollisionStart = (event: Matter.IEventCollision<Engine>) => {
+      console.log('collisionStart event:', event);
+      
+      // event.pairs가 있는지 확인
+      if (!event.pairs) return;
+
       event.pairs.forEach((pair) => {
         if (
           (pair.bodyA.label === 'ball' && pair.bodyB.label === 'balloon') ||
@@ -2759,10 +2774,9 @@ const PhysicsCanvas: React.FC = () => {
           setGameEnded(true);
         }
       });
-    });
+    }
 
-    // 공이 wall_bottom 아래로 떨어졌는지 확인
-    Matter.Events.on(engineRef.current, 'afterUpdate', () => {
+    const handleAfterUpdate = () => {
       const threshold = 40; // 공 및 사물 삭제 기준 높이
       const world = engineRef.current.world;
 
@@ -2816,11 +2830,13 @@ const PhysicsCanvas: React.FC = () => {
             body.render.opacity = body.render.opacity ?? 1; // 초기값 설정
             body.render.opacity -= 0.01; // 점진적으로 투명도 감소
 
-            if (body.render.opacity <= 0) {
+            if (body.render.opacity <= 0 && !body.eraserEmitted) {
+              body.eraserEmitted = true;
+              console.log("CurrentLevel: ", currentLevelRef.current);
               socket.emit('erase', {
                 customId: body.label,
                 playerId: 'player1',
-                currentLevel,
+                currentLevel: currentLevelRef.current,
                 isFall: true,
               });
               // Matter.World.remove(world, body); // 완전히 투명해지면 제거
@@ -2828,10 +2844,16 @@ const PhysicsCanvas: React.FC = () => {
           }
         }
       });
-    });
+    }
+    
+    Matter.Events.on(engineRef.current, 'collisionStart', handleCollisionStart);
+    Matter.Events.on(engineRef.current, 'afterUpdate', handleAfterUpdate);
 
     // 정리 함수
     return () => {
+      Matter.Events.off(engineRef.current, 'collisionStart', handleCollisionStart);
+      Matter.Events.off(engineRef.current, 'afterUpdate', handleAfterUpdate);
+
       if (renderRef.current) Matter.Render.stop(renderRef.current);
       if (runnerRef.current) Matter.Runner.stop(runnerRef.current);
       Matter.World.clear(world, false);
