@@ -3818,29 +3818,30 @@ const PhysicsCanvas: React.FC = () => {
     //   ) : (
       <div className="flex flex-col items-center gap-4">
         {/* <Timer startTimer={startTimer} onFinish={handleTimerFinish} /> */}
-        {/* 레벨 클리어 표 (1 ~ 9까지 예시) */}
-        <div className="mt-4 p-4 border border-gray-300 rounded">
+        {/* 스테이지 상태 (1 ~ 10까지 예시) */}
+        <div className="mt-4 p-4 border border-gray-300 rounded overflow-x-auto">
           <h3 className="text-lg font-bold mb-2">스테이지 상태</h3>
-          <table className="min-w-[400px] border-collapse">
+          <table className="min-w-full table-auto border-collapse">
             <thead>
               <tr>
                 <th className="border p-2">레벨</th>
-                <th className="border p-2">상태</th>
+                {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => (
+                  <th key={level} className="border p-2 text-center">{level}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {/* 1부터 TOTAL_LEVELS(9)까지 순회 */}
-              {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => {
-                const isCleared = completedLevels.includes(level);
-                return (
-                  <tr key={level}>
-                    <td className="border p-2 text-center">{level}</td>
-                    <td className="border p-2 text-center">
+              <tr>
+                <th className="border p-2">상태</th>
+                {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => {
+                  const isCleared = completedLevels.includes(level);
+                  return (
+                    <td key={level} className="border p-2 text-center">
                       {isCleared ? '완료' : '미완료'}
                     </td>
-                  </tr>
-                );
-              })}
+                  );
+                })}
+              </tr>
             </tbody>
           </table>
         </div>
