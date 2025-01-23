@@ -41,6 +41,7 @@ const PhysicsCanvas: React.FC = () => {
   const [completedLevels, setCompletedLevels] = useState<number[]>([]);
   // chain 이벤트가 이미 emit 되었는지 여부 플래그 (중복 방지)
   const chainEmittedRef = useRef<boolean>(false);
+  const [resetLevelInput, setResetLevelInput] = useState<number>(1); // 사용자 입력 상태 추가
   
   // const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
   // const [cursors, setCursors] = useState<{ playerId: string; x: number; y: number }[]>([]);
@@ -93,7 +94,7 @@ const PhysicsCanvas: React.FC = () => {
     if(gameEnded) {
       socket.emit('completeLevel', {
         completedLevel: currentLevel,
-        playerId: 'player1',
+        playerId: 'system',
       });
     }
   }, [gameEnded])
@@ -674,11 +675,11 @@ const PhysicsCanvas: React.FC = () => {
           // 
           if(constraintsToRemove.length === 0) {
             console.log("constraintsToRemove.length: ", constraintsToRemove.length)
-            socket.emit('releaseCategory', {
-              playerId: 'player1',
-              currentLevel,
-              category: targetBody.collisionFilter.category
-            });
+            // socket.emit('releaseCategory', {
+            //   playerId: 'player1',
+            //   currentLevel,
+            //   category: targetBody.collisionFilter.category
+            // });
           } else { // pin에 연결된 것이 한 개 이상 있을 때
             let isOtherContraintBody = false
             let otherContraintBodyCategory;
@@ -791,11 +792,11 @@ const PhysicsCanvas: React.FC = () => {
               Matter.World.remove(engineRef.current.world, ct);
             });
             if(!isOtherContraintBody) {
-              socket.emit('releaseCategory', {
-                playerId: 'player1',
-                currentLevel,
-                category: targetBody.collisionFilter.category,
-              });
+              // socket.emit('releaseCategory', {
+              //   playerId: 'player1',
+              //   currentLevel,
+              //   category: targetBody.collisionFilter.category,
+              // });
             }
           }
 
@@ -849,11 +850,11 @@ const PhysicsCanvas: React.FC = () => {
               console.log("nailToRemove: ", nailToRemove.label);
               const customId = nailToRemove.label;
               // 서버에 삭제 요청 전송
-              socket.emit('erase', {
-                customId,
-                playerId: 'player1',
-                currentLevel
-              });
+              // socket.emit('erase', {
+              //   customId,
+              //   playerId: 'player1',
+              //   currentLevel
+              // });
             }
             // Constraint 자체 제거
             Matter.World.remove(engineRef.current.world, constraint);
@@ -1619,7 +1620,7 @@ const PhysicsCanvas: React.FC = () => {
       //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
       // }
 
-      socket.emit('registerPin', { centerX4_0, centerY4_0, radius4, playerId: 'player1', customId: 'nail4_0', currentLevel});
+      // socket.emit('registerPin', { centerX4_0, centerY4_0, radius4, playerId: 'player1', customId: 'nail4_0', currentLevel});
       
       // 상태에 nail 추가
       addNail(nail4_0);
@@ -2507,7 +2508,7 @@ const PhysicsCanvas: React.FC = () => {
       //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
       // }
 
-      socket.emit('registerPin', { centerX8_0, centerY8_0, radius8, playerId: 'player1', customId: 'nail8_0', currentLevel});
+      // socket.emit('registerPin', { centerX8_0, centerY8_0, radius8, playerId: 'player1', customId: 'nail8_0', currentLevel});
       
       // 상태에 nail 추가
       addNail(nail8_0);
@@ -2833,12 +2834,12 @@ const PhysicsCanvas: React.FC = () => {
             if (body.render.opacity <= 0 && !body.eraserEmitted) {
               body.eraserEmitted = true;
               console.log("CurrentLevel: ", currentLevelRef.current);
-              socket.emit('erase', {
-                customId: body.label,
-                playerId: 'player1',
-                currentLevel: currentLevelRef.current,
-                isFall: true,
-              });
+              // socket.emit('erase', {
+              //   customId: body.label,
+              //   playerId: 'player1',
+              //   currentLevel: currentLevelRef.current,
+              //   isFall: true,
+              // });
               // Matter.World.remove(world, body); // 완전히 투명해지면 제거
             }
           }
@@ -3061,7 +3062,7 @@ const PhysicsCanvas: React.FC = () => {
 
         // 핀 데이터를 서버로 전송
         const customId = nail.label;
-        socket.emit('drawPin', { centerX, centerY, radius, points: points, playerId: 'player1', customId, currentLevel, targetBodyCustomId: targetBody.label, nailGroupNumber, nailCategory});
+        // socket.emit('drawPin', { centerX, centerY, radius, points: points, playerId: 'player1', customId, currentLevel, targetBodyCustomId: targetBody.label, nailGroupNumber, nailCategory});
       }
 
       // return {body: nail, nailsInShape: []};
@@ -3208,9 +3209,9 @@ const PhysicsCanvas: React.FC = () => {
         const nailCollisionCategory = nailsInShape[0]?.collisionFilter.category;
         const nailGroupNumber = nailsInShape[0]?.collisionFilter.group;
         if(nailCollisionCategory) {
-          socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel, nailsIdString, collisionCategory: nailCollisionCategory, groupNumber: nailGroupNumber });
+          // socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel, nailsIdString, collisionCategory: nailCollisionCategory, groupNumber: nailGroupNumber });
         } else {
-          socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel });
+          // socket.emit('drawShape', { points: simplified, playerId: 'player1', customId, currentLevel });
         }
       }
 
@@ -3257,20 +3258,20 @@ const PhysicsCanvas: React.FC = () => {
 
             // 임의의 customId 부여 (예: chain_타임스탬프)
             const customId = `chain_${Date.now()}`;
-            socket.emit('createChain', {
-              playerId: 'player1',
-              customId,
-              pinAId: pinA.label, // 예: 'nail_123'
-              pinBId: pinB.label, // 예: 'nail_456'
-              stiffness: 0.0001,
-              damping: 0.00001,
-              length: Matter.Vector.magnitude(
-                Matter.Vector.sub(pinB.position, pinA.position)
-              ) * 1.1,
-              currentLevel,
-            });
+            // socket.emit('createChain', {
+            //   playerId: 'player1',
+            //   customId,
+            //   pinAId: pinA.label, // 예: 'nail_123'
+            //   pinBId: pinB.label, // 예: 'nail_456'
+            //   stiffness: 0.0001,
+            //   damping: 0.00001,
+            //   length: Matter.Vector.magnitude(
+            //     Matter.Vector.sub(pinB.position, pinA.position)
+            //   ) * 1.1,
+            //   currentLevel,
+            // });
 
-            socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
+            // socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
             
             // 체인 생성 이벤트가 한 번 실행된 것으로 플래그 설정
             chainEmittedRef.current = true;
@@ -3420,14 +3421,14 @@ const PhysicsCanvas: React.FC = () => {
       if(nailBodies.length > 0 && !staticObjects.includes(nailBodies[0].label)) {
         const customId = nailBodies[0].label;
         // 서버에 삭제 요청 전송
-        socket.emit('erase', {
-          customId,
-          playerId: 'player2',
-          currentLevel,
-          isFall: false,
-        });
+        // socket.emit('erase', {
+        //   customId,
+        //   playerId: 'player2',
+        //   currentLevel,
+        //   isFall: false,
+        // });
 
-        socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
+        // socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
         return;
       } 
 
@@ -3448,15 +3449,15 @@ const PhysicsCanvas: React.FC = () => {
         if(!customId.startsWith("chain")) return;
     
         // 서버에 삭제 요청 전송
-        socket.emit('erase', {
-          customId,
-          playerId: 'player1',
-          currentLevel,
-          isRelease: false,
-        });
+        // socket.emit('erase', {
+        //   customId,
+        //   playerId: 'player1',
+        //   currentLevel,
+        //   isRelease: false,
+        // });
     
         // 턴 변경 전송
-        socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
+        // socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
         return;
       }
 
@@ -3471,14 +3472,14 @@ const PhysicsCanvas: React.FC = () => {
             // Matter.World.remove(engineRef.current.world, body);
             
             // 서버에 삭제 요청 전송
-            socket.emit('erase', {
-              customId,
-              playerId: 'player1',
-              currentLevel,
-            });
+            // socket.emit('erase', {
+            //   customId,
+            //   playerId: 'player1',
+            //   currentLevel,
+            // });
             
   
-            socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
+            // socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
   
             // 턴 전환 로직
             // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
@@ -3534,11 +3535,11 @@ const PhysicsCanvas: React.FC = () => {
       // Matter.Body.applyForce(ball, ball.position, force);
 
       // 서버에 힘 적용 요청 전송
-      socket.emit('push', {
-        force,
-        playerId: 'player1',
-        currentLevel
-      });
+      // socket.emit('push', {
+      //   force,
+      //   playerId: 'player1',
+      //   currentLevel
+      // });
 
       // socket.emit('changeTurn', { nextPlayerId: 'player2', currentLevel });
     }
@@ -3559,7 +3560,7 @@ const PhysicsCanvas: React.FC = () => {
     };
 
     // 서버로 마우스 위치 전송
-    socket.emit('mouseMove', { x: point.x, y: point.y, playerId: 'player1' });
+    // socket.emit('mouseMove', { x: point.x, y: point.y, playerId: 'player1' });
 
     if(!isDrawing || tool === 'eraser') return;
 
@@ -3635,7 +3636,7 @@ const PhysicsCanvas: React.FC = () => {
       if (body) {
         // Matter.World.add(engineRef.current.world, body);
         
-        socket.emit('changeTurn', { nextPlayerId: 'player2' });
+        // socket.emit('changeTurn', { nextPlayerId: 'player2' });
         // 턴 전환 로직
         // setCurrentTurn((prevTurn) => (prevTurn === "player1" ? "player2" : "player1"));
       }
@@ -3655,7 +3656,7 @@ const PhysicsCanvas: React.FC = () => {
     setSelectedPins([]);
 
     // 서버로 tool 변경 전송
-    socket.emit('changeTool', { tool: newTool, playerId: 'player1', currentLevel });
+    // socket.emit('changeTool', { tool: newTool, playerId: 'player1', currentLevel });
   };
 
   // const handleLevelChange = (direction: 'prev' | 'next') => {
@@ -3676,7 +3677,7 @@ const PhysicsCanvas: React.FC = () => {
         // saveLog(logInfo)
         
         // 서버로 레벨 변경 전송
-        socket.emit('changeLevel', { level: newLevel, currentLevel, direction, playerId: 'player1' });
+        // socket.emit('changeLevel', { level: newLevel, currentLevel, direction, playerId: 'player1' });
       } else {
         // showTemporaryMessage("실험이 마지막 스테이지입니다");
       }
@@ -3693,7 +3694,7 @@ const PhysicsCanvas: React.FC = () => {
         // saveLog(logInfo)
         
         // 서버로 레벨 변경 전송
-        socket.emit('changeLevel', { type: 'move_prev_level', level: newLevel, direction, playerId: 'player1', currentLevel, newLevel });
+        // socket.emit('changeLevel', { type: 'move_prev_level', level: newLevel, direction, playerId: 'player1', currentLevel, newLevel });
       } else {
         // showTemporaryMessage("첫 스테이지입니다");
       }
@@ -3707,7 +3708,7 @@ const PhysicsCanvas: React.FC = () => {
       setGameEnded(false); // 게임 종료 상태 초기화
 
       // 서버로 레벨 변경 전송
-      socket.emit('changeLevel', { level: newLevel, playerId: 'player1' });
+      // socket.emit('changeLevel', { level: newLevel, playerId: 'player1' });
     } else {
       // setCurrentLevel((prevLevel) => prevLevel)
       setGameEnded(false); // 게임 종료 상태 초기화
@@ -3739,7 +3740,7 @@ const PhysicsCanvas: React.FC = () => {
     // saveLog(logInfo);
 
     // 서버로 초기화 이벤트 전송
-    socket.emit('resetLevel', { playerId: 'player1', level: currentLevel });
+    // socket.emit('resetLevel', { playerId: 'player1', level: currentLevel });
   };
 
   // 누적해서 csv 파일 업데이트
@@ -3787,6 +3788,17 @@ const PhysicsCanvas: React.FC = () => {
     const allBodies = Matter.Composite.allBodies(engineRef.current.world);
     console.log("All Bodies:", allBodies);
   };
+
+  const handleResetEventButton = () => {
+    socket.emit('resetEvent', {
+      currentLevel: currentLevelRef.current,
+      level: resetLevelInput, // 사용자가 입력한 레벨을 전송
+    });
+    console.log('resetEvent emitted with payload:', {
+      currentLevel: currentLevelRef.current,
+      level: resetLevelInput,
+    });
+  }
 
   return (
     // <div>
@@ -3867,14 +3879,14 @@ const PhysicsCanvas: React.FC = () => {
           >
             <Pin size={24} />
           </button>
-          <button
+          {/* <button
             onClick={() => handleToolChange('chain')}
             className={`p-2 rounded ${
               tool === 'chain' ? 'bg-blue-500 text-white' : 'bg-gray-200'
             }`}
           >
             <Link size={24} />
-          </button>
+          </button> */}
           {/* 밀기 도구 버튼 */}
           <button
             onClick={() => handleToolChange('push')}
@@ -3892,6 +3904,24 @@ const PhysicsCanvas: React.FC = () => {
             {/* 손이 약간 겹치도록 배치 */}
             <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
           </button>
+          {/* Reset Event 버튼 및 입력 필드 추가 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              max={TOTAL_LEVELS}
+              value={resetLevelInput}
+              onChange={(e) => setResetLevelInput(Number(e.target.value))}
+              className="p-2 border border-gray-300 rounded"
+              placeholder="레벨 입력"
+            />
+            <button
+              onClick={handleResetEventButton}
+              className="p-2 rounded bg-red-500 text-white hover:bg-red-600"
+            >
+              Reset Event
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-4">
