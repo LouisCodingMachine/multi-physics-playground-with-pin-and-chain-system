@@ -210,7 +210,7 @@ const PhysicsCanvas: React.FC = () => {
   // Socket 이벤트 처리
   useEffect(() => {
     socket.on('mouseMove', (data: { x: number; y: number; playerId: string }) => {
-      if(data.playerId !== 'player2') return;
+      // if(data.playerId !== 'player2') return;
       const timestamp = Date.now();
       // console.log("data: ", data);
       setCursors((prevCursors) => {
