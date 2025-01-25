@@ -49,7 +49,7 @@ const PhysicsCanvas: React.FC = () => {
   const CURSOR_LIFETIME = 2000; // 2초
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
-  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform', 'nail4_0', 'nail4_1', 'nail4_2', 'nail8_0', 'horizontalPlatformForBall', 'horizontalPlatform', 'slope', 'horizontalPlatformForStar', 'cloud', 'scoop', 'obstacle', 'floor', 'Ishape', 'upperrectangle', 't_shape'];
+  const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform', 'nail4_0', 'nail4_1', 'nail4_2', 'nail8_0', 'horizontalPlatformForBall', 'horizontalPlatform', 'slope', 'horizontalPlatformForStar', 'cloud', 'scoop', 'obstacle', 'floor', 'Ishape', 'upperrectangle', 't_shape', 'nail7_0', 'nail7_1'];
   const staticObjects = ['wall', 'ball', 'balloon'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1799,6 +1799,235 @@ const PhysicsCanvas: React.FC = () => {
 
       ballRef.current = ball;
     } else if (currentLevel === 6) {
+      const world = engineRef.current.world;
+
+      const walls = [
+        Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        } }),
+        // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }),
+        // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }),
+        // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }),
+      ];
+
+      const ball = Matter.Bodies.circle(150, 400, 15, {
+        render: { fillStyle: '#ef4444' },
+        label: 'ball',
+        restitution: 0.3,
+        friction: 0.05,
+        frictionAir: 0.01,
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+      initialBallPositionRef.current = { x: 150, y: 400 };
+
+      const horizontalDownPlatform = Matter.Bodies.rectangle(150, 450, 200, 150, {
+        isStatic: true,
+        label: 'horizontal_down_platform',
+        render: { fillStyle: '#6b7280' },
+        collisionFilter: {
+          group: -1,
+          category: 0x0002, // Nail과 같은 카테고리
+          mask: 0xFFFF & ~0x0002, // 같은 카테고리끼리 충돌하지 않도록 설정
+        },
+      });
+
+/*       const horizontalUpPlatform = Matter.Bodies.rectangle(550, 200, 400, 20, {
+        isStatic: true,
+        label: 'horizontal_up_platform',
+        render: { fillStyle: '#6b7280' },
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      }); */
+
+      const star = Matter.Bodies.trapezoid(700, 350, 20, 20, 1, {
+        render: { fillStyle: '#fbbf24' },
+        label: 'balloon',
+        isStatic: true,
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0x0001,
+        }
+      });
+
+      // 못(nail) 생성
+      const centerX7_0 = 230;
+      const centerY7_0 = 410;
+      const radius7 = 10;
+      const nail7_0 = Matter.Bodies.circle(centerX7_0, centerY7_0, radius7, {
+        isStatic: true,
+        collisionFilter: {
+          group: -1,
+          category: 0x0002, // Nail의 카테고리
+          mask: 0x0000,
+        },
+        render: {
+          fillStyle: 'rgba(0, 0, 0, 0.0)', // 못의 색상
+          strokeStyle: '#fbbf24',
+          lineWidth: 3,
+        },
+        label: 'nail7_0', // Assign customId
+        mass: 30,
+      });
+
+      // 못(nail)을 포함한 객체의 충돌 규칙 수정
+      // targetBody.collisionFilter = {
+      //   group: data.groupNumber,
+      //   category: data.category, // Nail과 같은 카테고리
+      //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
+      // }
+
+      socket.emit('registerPin', { centerX7_0, centerY7_0, radius7, playerId: 'player1', customId: 'nail7_0', currentLevel});
+      
+      // 상태에 nail 추가
+      addNail(nail7_0);
+
+      const constraint7_0 = Matter.Constraint.create({
+        bodyA: horizontalDownPlatform, // 도형
+        pointA: { x: centerX7_0 - horizontalDownPlatform.position.x, y: centerY7_0 - horizontalDownPlatform.position.y }, // 도형 내부의 연결 지점
+        bodyB: nail7_0, // 못
+        pointB: { x: 0, y: 0 }, // 못의 중심
+        stiffness: 1, // 강성(도형과 못의 연결 강도)
+        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
+        render: {
+          visible: false, // Constraint 시각화를 비활성화
+        },
+      });
+
+      // 못(nail) 생성
+      const centerX7_1 = 70;
+      const centerY7_1 = 410;
+      const nail7_1 = Matter.Bodies.circle(centerX7_1, centerY7_1, radius7, {
+        isStatic: true,
+        collisionFilter: {
+          group: -1,
+          category: 0x0002, // Nail의 카테고리
+          mask: 0x0000,
+        },
+        render: {
+          fillStyle: 'rgba(0, 0, 0, 0.0)', // 못의 색상
+          strokeStyle: '#fbbf24',
+          lineWidth: 3,
+        },
+        label: 'nail7_1', // Assign customId
+        mass: 30,
+      });
+
+      // 못(nail)을 포함한 객체의 충돌 규칙 수정
+      // targetBody.collisionFilter = {
+      //   group: data.groupNumber,
+      //   category: data.category, // Nail과 같은 카테고리
+      //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
+      // }
+
+      // socket.emit('registerPin', { centerX7_1, centerY7_1, radius7, playerId: 'player1', customId: 'nail7_1', currentLevel});
+      
+      // 상태에 nail 추가
+      addNail(nail7_1);
+
+      const constraint7_1 = Matter.Constraint.create({
+        bodyA: horizontalDownPlatform, // 도형
+        pointA: { x: centerX7_1 - horizontalDownPlatform.position.x, y: centerY7_1 - horizontalDownPlatform.position.y }, // 도형 내부의 연결 지점
+        bodyB: nail7_1, // 못
+        pointB: { x: 0, y: 0 }, // 못의 중심
+        stiffness: 1, // 강성(도형과 못의 연결 강도)
+        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
+        render: {
+          visible: false, // Constraint 시각화를 비활성화
+        },
+      });
+
+      Matter.World.add(world, [
+        ...walls,
+        ball,
+        star,
+        horizontalDownPlatform,
+        nail7_0,
+        constraint7_0,
+        nail7_1,
+        constraint7_1,
+      ]);
+
+      ballRef.current = ball;
+
+      /***** Original *****/
+      // const world = engineRef.current.world;
+
+      // const walls = [
+      //   Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   } }),
+      //   // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      //   // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      //   // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      // ];
+
+      // const ball = Matter.Bodies.circle(150, 400, 15, {
+      //   render: { fillStyle: '#ef4444' },
+      //   label: 'ball',
+      //   restitution: 0.3,
+      //   friction: 0.05,
+      //   frictionAir: 0.01,
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   }
+      // });
+      // initialBallPositionRef.current = { x: 150, y: 400 };
+
+      // const horizontalPlatform = Matter.Bodies.rectangle(150, 450, 200, 150, {
+      //   isStatic: true,
+      //   label: 'horizontal_down_platform',
+      //   render: { fillStyle: '#6b7280' },
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   }
+      // });
+
+      // const star = Matter.Bodies.trapezoid(700, 350, 20, 20, 1, {
+      //   render: { fillStyle: '#fbbf24' },
+      //   label: 'balloon',
+      //   isStatic: true,
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0x0001,
+      //   }
+      // });
+
+      // Matter.World.add(world, [
+      //   ...walls,
+      //   ball,
+      //   star,
+      //   horizontalPlatform,
+      // ]);
+
+      // ballRef.current = ball;
+    } else if (currentLevel === 7) {
       const walls = [
         Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
           category: 0x0001,
@@ -1920,419 +2149,7 @@ const PhysicsCanvas: React.FC = () => {
       // ]);
 
       // ballRef.current = ball;
-    } else if (currentLevel === 7) {
-      const walls = [
-        Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom',collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        } }), // 바닥
-        // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall_top',collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }), // 상단
-        // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall_left', collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }), // 왼쪽 벽
-        // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall_right', collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }), // 오른쪽 벽
-      ];
-    
-      // 공 설정 (초기 위치와 속성)
-      const ball = Matter.Bodies.circle(500, 250, 15, {
-        render: { fillStyle: '#ef4444' },
-        label: 'ball',
-        restitution: 0.3, // 반발 계수
-        friction: 0.05,
-        frictionAir: 0.01,
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-      initialBallPositionRef.current = { x: 500, y: 250 };
-    
-      // 별 설정 (왼쪽 위 플랫폼 위)
-      const star = Matter.Bodies.trapezoid(150, 310, 20, 20, 1, {
-        render: { fillStyle: '#fbbf24' },
-        label: 'balloon',
-        isStatic: true,
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0x0001,
-        }
-      });
-    
-      // 수평 빨간 플랫폼 (별 아래)
-      const redPlatform = Matter.Bodies.rectangle(120, 340, 250, 30, {
-        isStatic: true,
-        label: 'red_platform',
-        render: { fillStyle: '#ef4444' },
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-    
-      // 오른쪽 초록 경사면
-      // const greenRamp = Matter.Bodies.rectangle(500, 350, 150, 10, {
-        // isStatic: true,
-        // label: 'green_ramp',
-        // render: { fillStyle: '#10b981' },
-        // angle: Math.PI / 6, // 경사각 30도
-      // });
-      const greenRamp = Matter.Bodies.trapezoid(520, 310, 220, 100, 2, {
-        isStatic: true,
-        label: 'green_ramp',
-        render: { fillStyle: '#10b981' },
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-    
-      // 중앙 파란 장애물 (선택적 추가)
-      const centralUpObstacle = Matter.Bodies.rectangle(400, 170, 90, 350, {
-        isStatic: true,
-        label: 'central_obstacle',
-        render: { fillStyle: '#3b82f6' },
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-
-      const centralDownObstacle = Matter.Bodies.rectangle(400, 550, 90, 100, {
-        isStatic: true,
-        label: 'central_obstacle',
-        render: { fillStyle: '#3b82f6' },
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-    
-      // 모든 요소를 월드에 추가
-      Matter.World.add(world, [
-        ...walls,
-        ball,
-        star,
-        redPlatform,
-        greenRamp,
-        centralUpObstacle,
-        centralDownObstacle,
-      ]);
-    
-      // 공을 참조
-      ballRef.current = ball;
-
-      // const world = engineRef.current.world;
-
-      // const walls = [
-      //   Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   } }),
-      //   // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      //   // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      //   // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      // ];
-
-      // const ball = Matter.Bodies.circle(150, 400, 15, {
-      //   render: { fillStyle: '#ef4444' },
-      //   label: 'ball',
-      //   restitution: 0.3,
-      //   friction: 0.05,
-      //   frictionAir: 0.01,
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   }
-      // });
-      // initialBallPositionRef.current = { x: 150, y: 400 };
-
-      // const horizontalDownPlatform = Matter.Bodies.rectangle(300, 450, 450, 150, {
-      //   isStatic: true,
-      //   label: 'horizontal_down_platform',
-      //   render: { fillStyle: '#6b7280' },
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   }
-      // });
-
-      // const horizontalUpPlatform = Matter.Bodies.rectangle(550, 200, 400, 20, {
-      //   isStatic: true,
-      //   label: 'horizontal_up_platform',
-      //   render: { fillStyle: '#6b7280' },
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   }
-      // });
-
-      // const star = Matter.Bodies.trapezoid(700, 180, 20, 20, 1, {
-      //   render: { fillStyle: '#fbbf24' },
-      //   label: 'balloon',
-      //   isStatic: true,
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0x0001,
-      //   }
-      // });
-
-      // Matter.World.add(world, [
-      //   ...walls,
-      //   ball,
-      //   star,
-      //   horizontalDownPlatform,
-      //   horizontalUpPlatform,
-      // ]);
-
-      // ballRef.current = ball;
     } else if (currentLevel === 8) {
-      const world = engineRef.current.world;
-
-      const walls = [
-        Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        } }),
-        // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }),
-        // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }),
-        // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-        //   category: 0x0001,
-        //   mask: 0xFFFF,
-        // } }),
-      ];
-
-      const ball = Matter.Bodies.circle(150, 400, 15, {
-        render: { fillStyle: '#ef4444' },
-        label: 'ball',
-        restitution: 0.3,
-        friction: 0.05,
-        frictionAir: 0.01,
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      });
-      initialBallPositionRef.current = { x: 150, y: 400 };
-
-      const horizontalDownPlatform = Matter.Bodies.rectangle(150, 450, 200, 150, {
-        isStatic: true,
-        label: 'horizontal_down_platform',
-        render: { fillStyle: '#6b7280' },
-        collisionFilter: {
-          group: -1,
-          category: 0x0002, // Nail과 같은 카테고리
-          mask: 0xFFFF & ~0x0002, // 같은 카테고리끼리 충돌하지 않도록 설정
-        },
-      });
-
-/*       const horizontalUpPlatform = Matter.Bodies.rectangle(550, 200, 400, 20, {
-        isStatic: true,
-        label: 'horizontal_up_platform',
-        render: { fillStyle: '#6b7280' },
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
-        }
-      }); */
-
-      const star = Matter.Bodies.trapezoid(700, 350, 20, 20, 1, {
-        render: { fillStyle: '#fbbf24' },
-        label: 'balloon',
-        isStatic: true,
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0x0001,
-        }
-      });
-
-      /*
-      // 못(nail) 생성
-      const centerX7_0 = 230;
-      const centerY7_0 = 410;
-      const radius7 = 10;
-      const nail7_0 = Matter.Bodies.circle(centerX7_0, centerY7_0, radius7, {
-        isStatic: true,
-        collisionFilter: {
-          group: -1,
-          category: 0x0002, // Nail의 카테고리
-          mask: 0x0000,
-        },
-        render: {
-          fillStyle: 'rgba(0, 0, 0, 0.0)', // 못의 색상
-          strokeStyle: '#fbbf24',
-          lineWidth: 3,
-        },
-        label: 'nail7_0', // Assign customId
-        mass: 30,
-      });
-
-      // 못(nail)을 포함한 객체의 충돌 규칙 수정
-      // targetBody.collisionFilter = {
-      //   group: data.groupNumber,
-      //   category: data.category, // Nail과 같은 카테고리
-      //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
-      // }
-
-      socket.emit('registerPin', { centerX7_0, centerY7_0, radius7, playerId: 'player1', customId: 'nail7_0', currentLevel});
-      
-      // 상태에 nail 추가
-      addNail(nail7_0);
-
-      const constraint7_0 = Matter.Constraint.create({
-        bodyA: horizontalDownPlatform, // 도형
-        pointA: { x: centerX7_0 - horizontalDownPlatform.position.x, y: centerY7_0 - horizontalDownPlatform.position.y }, // 도형 내부의 연결 지점
-        bodyB: nail7_0, // 못
-        pointB: { x: 0, y: 0 }, // 못의 중심
-        stiffness: 1, // 강성(도형과 못의 연결 강도)
-        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
-        render: {
-          visible: false, // Constraint 시각화를 비활성화
-        },
-      });
-
-      // 못(nail) 생성
-      const centerX7_1 = 70;
-      const centerY7_1 = 410;
-      const nail7_1 = Matter.Bodies.circle(centerX7_1, centerY7_1, radius7, {
-        isStatic: true,
-        collisionFilter: {
-          group: -1,
-          category: 0x0002, // Nail의 카테고리
-          mask: 0x0000,
-        },
-        render: {
-          fillStyle: 'rgba(0, 0, 0, 0.0)', // 못의 색상
-          strokeStyle: '#fbbf24',
-          lineWidth: 3,
-        },
-        label: 'nail7_1', // Assign customId
-        mass: 30,
-      });
-
-      // 못(nail)을 포함한 객체의 충돌 규칙 수정
-      // targetBody.collisionFilter = {
-      //   group: data.groupNumber,
-      //   category: data.category, // Nail과 같은 카테고리
-      //   mask: 0xFFFF & ~data.category, // 같은 카테고리끼리 충돌하지 않도록 설정
-      // }
-
-      socket.emit('registerPin', { centerX7_1, centerY7_1, radius7, playerId: 'player1', customId: 'nail7_1', currentLevel});
-      
-      // 상태에 nail 추가
-      addNail(nail7_1);
-
-      const constraint7_1 = Matter.Constraint.create({
-        bodyA: horizontalDownPlatform, // 도형
-        pointA: { x: centerX7_1 - horizontalDownPlatform.position.x, y: centerY7_1 - horizontalDownPlatform.position.y }, // 도형 내부의 연결 지점
-        bodyB: nail7_1, // 못
-        pointB: { x: 0, y: 0 }, // 못의 중심
-        stiffness: 1, // 강성(도형과 못의 연결 강도)
-        length: 0, // 길이 (0으로 설정해 못이 도형에 붙어 있게 함)
-        render: {
-          visible: false, // Constraint 시각화를 비활성화
-        },
-      });
-      */
-
-      Matter.World.add(world, [
-        ...walls,
-        ball,
-        star,
-        horizontalDownPlatform,
-        // nail7_0,
-        // constraint7_0,
-        // nail7_1,
-        // constraint7_1,
-      ]);
-
-      ballRef.current = ball;
-
-      /***** Original *****/
-      // const world = engineRef.current.world;
-
-      // const walls = [
-      //   Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   } }),
-      //   // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      //   // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      //   // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
-      //   //   category: 0x0001,
-      //   //   mask: 0xFFFF,
-      //   // } }),
-      // ];
-
-      // const ball = Matter.Bodies.circle(150, 400, 15, {
-      //   render: { fillStyle: '#ef4444' },
-      //   label: 'ball',
-      //   restitution: 0.3,
-      //   friction: 0.05,
-      //   frictionAir: 0.01,
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   }
-      // });
-      // initialBallPositionRef.current = { x: 150, y: 400 };
-
-      // const horizontalPlatform = Matter.Bodies.rectangle(150, 450, 200, 150, {
-      //   isStatic: true,
-      //   label: 'horizontal_down_platform',
-      //   render: { fillStyle: '#6b7280' },
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0xFFFF,
-      //   }
-      // });
-
-      // const star = Matter.Bodies.trapezoid(700, 350, 20, 20, 1, {
-      //   render: { fillStyle: '#fbbf24' },
-      //   label: 'balloon',
-      //   isStatic: true,
-      //   collisionFilter: {
-      //     category: 0x0001,
-      //     mask: 0x0001,
-      //   }
-      // });
-
-      // Matter.World.add(world, [
-      //   ...walls,
-      //   ball,
-      //   star,
-      //   horizontalPlatform,
-      // ]);
-
-      // ballRef.current = ball;
-    } else if (currentLevel === 9) {
       const world = engineRef.current.world;
 
       const walls = [
@@ -2541,6 +2358,187 @@ const PhysicsCanvas: React.FC = () => {
       ]);
 
       ballRef.current = ball;
+    } else if (currentLevel === 9) {
+      const walls = [
+        Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom',collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        } }), // 바닥
+        // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall_top',collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }), // 상단
+        // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall_left', collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }), // 왼쪽 벽
+        // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall_right', collisionFilter: {
+        //   category: 0x0001,
+        //   mask: 0xFFFF,
+        // } }), // 오른쪽 벽
+      ];
+    
+      // 공 설정 (초기 위치와 속성)
+      const ball = Matter.Bodies.circle(500, 250, 15, {
+        render: { fillStyle: '#ef4444' },
+        label: 'ball',
+        restitution: 0.3, // 반발 계수
+        friction: 0.05,
+        frictionAir: 0.01,
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+      initialBallPositionRef.current = { x: 500, y: 250 };
+    
+      // 별 설정 (왼쪽 위 플랫폼 위)
+      const star = Matter.Bodies.trapezoid(150, 310, 20, 20, 1, {
+        render: { fillStyle: '#fbbf24' },
+        label: 'balloon',
+        isStatic: true,
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0x0001,
+        }
+      });
+    
+      // 수평 빨간 플랫폼 (별 아래)
+      const redPlatform = Matter.Bodies.rectangle(120, 340, 250, 30, {
+        isStatic: true,
+        label: 'red_platform',
+        render: { fillStyle: '#ef4444' },
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+    
+      // 오른쪽 초록 경사면
+      // const greenRamp = Matter.Bodies.rectangle(500, 350, 150, 10, {
+        // isStatic: true,
+        // label: 'green_ramp',
+        // render: { fillStyle: '#10b981' },
+        // angle: Math.PI / 6, // 경사각 30도
+      // });
+      const greenRamp = Matter.Bodies.trapezoid(520, 310, 220, 100, 2, {
+        isStatic: true,
+        label: 'green_ramp',
+        render: { fillStyle: '#10b981' },
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+    
+      // 중앙 파란 장애물 (선택적 추가)
+      const centralUpObstacle = Matter.Bodies.rectangle(400, 170, 90, 350, {
+        isStatic: true,
+        label: 'central_obstacle',
+        render: { fillStyle: '#3b82f6' },
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+
+      const centralDownObstacle = Matter.Bodies.rectangle(400, 550, 90, 100, {
+        isStatic: true,
+        label: 'central_obstacle',
+        render: { fillStyle: '#3b82f6' },
+        collisionFilter: {
+          category: 0x0001,
+          mask: 0xFFFF,
+        }
+      });
+    
+      // 모든 요소를 월드에 추가
+      Matter.World.add(world, [
+        ...walls,
+        ball,
+        star,
+        redPlatform,
+        greenRamp,
+        centralUpObstacle,
+        centralDownObstacle,
+      ]);
+    
+      // 공을 참조
+      ballRef.current = ball;
+
+      // const world = engineRef.current.world;
+
+      // const walls = [
+      //   Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   } }),
+      //   // Matter.Bodies.rectangle(400, -10, 810, 20, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      //   // Matter.Bodies.rectangle(-10, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      //   // Matter.Bodies.rectangle(810, 300, 20, 620, { isStatic: true, label: 'wall', collisionFilter: {
+      //   //   category: 0x0001,
+      //   //   mask: 0xFFFF,
+      //   // } }),
+      // ];
+
+      // const ball = Matter.Bodies.circle(150, 400, 15, {
+      //   render: { fillStyle: '#ef4444' },
+      //   label: 'ball',
+      //   restitution: 0.3,
+      //   friction: 0.05,
+      //   frictionAir: 0.01,
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   }
+      // });
+      // initialBallPositionRef.current = { x: 150, y: 400 };
+
+      // const horizontalDownPlatform = Matter.Bodies.rectangle(300, 450, 450, 150, {
+      //   isStatic: true,
+      //   label: 'horizontal_down_platform',
+      //   render: { fillStyle: '#6b7280' },
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   }
+      // });
+
+      // const horizontalUpPlatform = Matter.Bodies.rectangle(550, 200, 400, 20, {
+      //   isStatic: true,
+      //   label: 'horizontal_up_platform',
+      //   render: { fillStyle: '#6b7280' },
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0xFFFF,
+      //   }
+      // });
+
+      // const star = Matter.Bodies.trapezoid(700, 180, 20, 20, 1, {
+      //   render: { fillStyle: '#fbbf24' },
+      //   label: 'balloon',
+      //   isStatic: true,
+      //   collisionFilter: {
+      //     category: 0x0001,
+      //     mask: 0x0001,
+      //   }
+      // });
+
+      // Matter.World.add(world, [
+      //   ...walls,
+      //   ball,
+      //   star,
+      //   horizontalDownPlatform,
+      //   horizontalUpPlatform,
+      // ]);
+
+      // ballRef.current = ball;
     } else if (currentLevel === 10) {
       const walls = [
         Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: {
@@ -3824,7 +3822,7 @@ const PhysicsCanvas: React.FC = () => {
           <table className="min-w-full table-auto border-collapse">
             <thead>
               <tr>
-                <th className="border p-2">레벨</th>
+                <th className="border p-2">스테이지</th>
                 {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => (
                   <th key={level} className="border p-2 text-center">{level}</th>
                 ))}
@@ -3836,7 +3834,10 @@ const PhysicsCanvas: React.FC = () => {
                 {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => {
                   const isCleared = completedLevels.includes(level);
                   return (
-                    <td key={level} className="border p-2 text-center">
+                    <td
+                      key={level}
+                      className={`border p-2 text-center font-bold text-white ${isCleared ? 'bg-green-500' : 'bg-red-500'}`}
+                    >
                       {isCleared ? '완료' : '미완료'}
                     </td>
                   );
