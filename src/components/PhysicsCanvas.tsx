@@ -92,10 +92,10 @@ const PhysicsCanvas: React.FC = () => {
   
   useEffect(() => {
     if(gameEnded) {
-      socket.emit('completeLevel', {
-        completedLevel: currentLevel,
-        playerId: 'system',
-      });
+      // socket.emit('completeLevel', {
+      //   completedLevel: currentLevel,
+      //   playerId: 'system',
+      // });
     }
   }, [gameEnded])
 
